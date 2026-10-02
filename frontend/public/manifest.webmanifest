@@ -1,0 +1,11 @@
+{
+  "name": "TRG Systems",
+  "short_name": "TRG",
+  "description": "The Resha Group CRM: field mode",
+  "start_url": "/m",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f3ec",
+  "theme_color": "#0f1b2d",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

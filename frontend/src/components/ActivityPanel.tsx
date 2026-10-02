@@ -81,7 +81,7 @@ export function ActivityPanel({ recordType, recordId }: { recordType: string; re
             <TabsContent value="timeline">
               {(tl.data?.upcoming.length ?? 0) > 0 && (<div className="mb-3 rounded-lg border bg-accent/5 px-3"><div className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Upcoming</div>
                 <div className="divide-y">{tl.data!.upcoming.map((u) => <ActivityRow key={u.data.id} a={u.data} onComplete={setDone} />)}</div></div>)}
-              <div className="divide-y">{tl.data?.history.map((h) => h.kind === 'activity' ? <ActivityRow key={`a${h.data.id}`} a={h.data} /> : h.kind === 'note' ? <NoteRow key={`n${h.data.id}`} n={h.data} /> : <DocRow key={`d${h.data.id}`} d={h.data} />)}</div>
+              <div className="divide-y">{tl.data?.history.map((h) => h.kind === 'activity' ? <ActivityRow key={`a${h.data.id}`} a={h.data} /> : h.kind === 'note' ? <NoteRow key={`n${h.data.id}`} n={h.data} /> : h.kind === 'email' ? <EmailRow key={`e${h.data.id}`} m={h.data as unknown as EmailT} /> : h.kind === 'event' ? <EventRow key={`v${h.data.id}`} e={h.data as unknown as EventT} /> : <DocRow key={`d${h.data.id}`} d={h.data} />)}</div>
               {tl.data && tl.data.history.length + tl.data.upcoming.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No activity yet. Log a call or apply a cadence to start the timeline.</p>}
             </TabsContent>
             <TabsContent value="notes"><div className="divide-y">{notes.map((h) => <NoteRow key={h.data.id} n={h.data} />)}{notes.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No notes.</p>}</div></TabsContent>
@@ -97,6 +97,26 @@ function NoteRow({ n }: { n: NoteT }) {
     <div className="flex items-start gap-3 py-2.5" data-testid="note-row"><div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[#7a5614]"><StickyNote className="h-4 w-4" /></div>
       <div className="min-w-0 flex-1"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="font-medium text-foreground">{n.author}</span>{fmtDate(n.created_at)}{n.edited && <span>(edited)</span>}
         {n.pinned && <Pin className="h-3 w-3 text-accent" />}{n.visibility === 'private' && <Badge variant="outline"><Lock className="h-3 w-3" /> Private</Badge>}</div><p className="mt-0.5 text-sm">{n.body}</p></div></div>
+  )
+}
+
+interface EmailT { id: number; direction: string; subject: string | null; subject_hidden?: boolean; body?: string; from_addr: string; sent_at: string; owner: string | null; mine: boolean; visibility: string }
+interface EventT { id: number; title: string; start_at: string; location: string | null; owner: string | null; mine: boolean }
+
+function EmailRow({ m }: { m: EmailT }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5" data-testid="email-row"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Mail className="h-4 w-4" /></div>
+      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-sm font-medium"><span className="truncate">{m.subject ?? 'Private subject'}</span><Badge variant="outline" className="capitalize">{m.direction}</Badge>
+        {m.visibility === 'private' && <Badge variant="secondary"><Lock className="h-3 w-3" /> Only you</Badge>}</div>
+        <div className="text-xs text-muted-foreground">{fmtDate(m.sent_at)} · {m.mine ? 'You' : m.owner}</div>
+        {m.body && <div className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{m.body}</div>}</div></div>
+  )
+}
+
+function EventRow({ e }: { e: EventT }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5" data-testid="event-row"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[#7a5614]"><Calendar className="h-4 w-4" /></div>
+      <div className="min-w-0 flex-1"><div className="text-sm font-medium">{e.title}</div><div className="text-xs text-muted-foreground">{fmtDate(e.start_at)}{e.location ? ` · ${e.location}` : ''} · {e.mine ? 'You' : e.owner}</div></div></div>
   )
 }
 

@@ -1,4 +1,4 @@
-import { Building2, Users, MapPin, Target, Store, Kanban, CheckSquare, Landmark, PiggyBank, BarChart3, Mail, ListChecks, Upload, GitMerge, Workflow, ShieldCheck, LayoutDashboard, type LucideIcon } from 'lucide-react'
+import { Building2, Users, MapPin, Target, Store, Kanban, CheckSquare, Landmark, PiggyBank, BarChart3, Mail, ListChecks, Upload, GitMerge, Workflow, ShieldCheck, Smartphone, LayoutDashboard, type LucideIcon } from 'lucide-react'
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; stage: number; group: string }
 
@@ -16,6 +16,7 @@ export const NAV: NavItem[] = [
   { to: '/funds', label: 'Funds', icon: PiggyBank, stage: 5, group: '1880 Capital' },
   { to: '/reports', label: 'Reports', icon: BarChart3, stage: 6, group: 'Insight' },
   { to: '/inbox', label: 'Email', icon: Mail, stage: 10, group: 'Platform' },
+  { to: '/m', label: 'Field Mode', icon: Smartphone, stage: 10, group: 'Platform' },
   { to: '/lists', label: 'Lists & Views', icon: ListChecks, stage: 7, group: 'Platform' },
   { to: '/data', label: 'Import / Export', icon: Upload, stage: 8, group: 'Platform' },
   { to: '/automation', label: 'Automation', icon: Workflow, stage: 9, group: 'Platform' },

@@ -59,8 +59,8 @@ def seed(db, ctx):
             payload["visibility"] = pick(["team_metadata", "team_subject", "team_full"])
         if svc.capture_message(db, u, payload, channel=pick(["sync", "sync", "bcc"])).get("stored"):
             stored += 1
-    for i in range(6):  # a few that match nobody, for the unlinked-triage queue
-        u = random.choice(brokers)
+    for i in range(6):  # a few that match nobody, for the unlinked-triage queue (half land with Jim, who demos first)
+        u = brokers[0] if i % 2 == 0 else random.choice(brokers)
         conn = svc.get_connection(db, u)
         svc.capture_message(db, u, {"from_addr": f"stranger{i}@newprospect.example", "to_addrs": [conn.email_address], "subject": "Saw your listing on LoopNet", "body": "Do you have details on the Brea industrial building?",
                                    "sent_at": now - timedelta(days=rnd(1, 20)), "message_id": f"<seed-unlinked-{i}@trg.local>"})

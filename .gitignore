@@ -10,3 +10,6 @@ frontend/test-results/
 frontend/playwright-report/
 .venv/
 *.log
+
+*.db-shm
+*.db-wal

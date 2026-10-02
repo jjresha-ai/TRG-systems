@@ -24,6 +24,8 @@ import DataPage from '@/pages/DataPage'
 import Admin from '@/pages/Admin'
 import Automation from '@/pages/Automation'
 import Listings from '@/pages/Listings'
+import Inbox from '@/pages/Inbox'
+import Mobile from '@/pages/Mobile'
 import ListingDetail from '@/pages/ListingDetail'
 
 export default function App() {
@@ -53,6 +55,8 @@ export default function App() {
         <Route path="/automation" element={<Automation />} />
         <Route path="/listings" element={<Listings />} />
         <Route path="/listings/:id" element={<ListingDetail />} />
+        <Route path="/inbox" element={<Inbox />} />
+        <Route path="/m" element={<Mobile />} />
         <Route path="/duplicates" element={<Duplicates />} />
         <Route path="*" element={<ComingSoon />} />
       </Route>
