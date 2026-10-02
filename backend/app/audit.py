@@ -81,7 +81,8 @@ def _write(session: Session, ctx):
                   for k in inspect(obj).mapper.column_attrs
                   if k.key not in SKIP_FIELDS and k.key not in SENSITIVE_FIELDS and getattr(obj, k.key) is not None}
         rows.append(dict(
-            timestamp=utcnow(), actor=current_actor.get(), actor_user_id=current_actor_id.get(),
+            timestamp=utcnow(), actor=session.info.get("actor") or current_actor.get(),
+            actor_user_id=session.info.get("actor_id") or current_actor_id.get(),
             action=action, entity_type=obj.__tablename__, entity_id=obj.id, changes=ch,
         ))
     session.connection().execute(insert(AuditEvent.__table__), rows)
@@ -89,5 +90,5 @@ def _write(session: Session, ctx):
 
 def log_event(db: Session, action: str, entity_type: str = "system", entity_id: int | None = None, changes: dict | None = None):
     from .models.core_sys import AuditEvent
-    db.add(AuditEvent(timestamp=utcnow(), actor=current_actor.get(), actor_user_id=current_actor_id.get(),
+    db.add(AuditEvent(timestamp=utcnow(), actor=db.info.get("actor") or current_actor.get(), actor_user_id=db.info.get("actor_id") or current_actor_id.get(),
                       action=action, entity_type=entity_type, entity_id=entity_id, changes=changes or {}))

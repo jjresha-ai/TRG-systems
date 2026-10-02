@@ -3,10 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .db import Base, engine
-from .routers import auth, system
+from .routers import auth, system, contacts, companies, properties, search
 from . import models  # noqa: F401  (register tables)
 
-ROUTERS = [system.router, auth.router]
+ROUTERS = [system.router, auth.router, contacts.router, companies.router, properties.router, search.router]
 
 
 @asynccontextmanager

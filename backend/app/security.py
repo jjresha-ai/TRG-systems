@@ -72,6 +72,7 @@ def current_user(authorization: str | None = Header(default=None), db: Session =
         raise HTTPException(401, "Invalid or expired token")
     current_actor.set(user.name)
     current_actor_id.set(user.id)
+    db.info["actor"], db.info["actor_id"] = user.name, user.id  # sync deps run in worker threads; the session carries the actor
     return user
 
 
