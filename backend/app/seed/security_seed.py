@@ -123,6 +123,15 @@ def seed(db, ctx):
     add(datetime.utcnow() - timedelta(days=95), jim.id, "role_change", "users", maria.id, {"from": "broker", "to": "manager", "by": jim.name})
     for _ in range(40):
         add(datetime.utcnow() - timedelta(hours=rnd(1, 24 * 40)), tyler.id, "api_token_use", "api_tokens", 1, {"method": "POST", "path": "/api/public/leads"})
+    # tasks the rules created: the audit trail attributes them to the rule, not to a person
+    from ..models.security import RuleActionLog
+    from ..models.work import Activity
+    rule_names = {r.id: r.name for r in rules}
+    for lg in db.scalars(select(RuleActionLog).where(RuleActionLog.action_type == "create_task")):
+        a = db.scalar(select(Activity).where(Activity.source_key == lg.key))
+        if a:
+            ev.append(AuditEvent(timestamp=lg.at, actor=f"rule:{rule_names[lg.rule_id]}", actor_user_id=None, action="create", entity_type="activities", entity_id=a.id,
+                                 changes={"subject": [None, a.subject], "type": [None, a.type], "priority": [None, a.priority]}))
     ev.sort(key=lambda e: e.timestamp)
     db.add_all(ev)
     db.flush()
