@@ -1,0 +1,12 @@
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+backend/*.db
+backend/*.db-journal
+backend/storage/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.venv/
+*.log
