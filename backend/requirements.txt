@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy>=2
+alembic
+pydantic-settings
+python-multipart
+openpyxl
+pytest
+httpx
