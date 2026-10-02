@@ -1,7 +1,8 @@
 import { Route, Routes } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import Login from '@/pages/Login'
-import Home from '@/pages/Home'
+import Dashboard from '@/pages/Dashboard'
+import Reports from '@/pages/Reports'
 import ComingSoon from '@/pages/ComingSoon'
 import Contacts from '@/pages/Contacts'
 import ContactDetail from '@/pages/ContactDetail'
@@ -26,7 +27,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contacts/:id" element={<ContactDetail />} />
         <Route path="/companies" element={<Companies />} />

@@ -12,12 +12,13 @@ test('rejects a bad password', async ({ page }) => {
 test('login shows the live build home with all stages', async ({ page }) => {
   await login(page)
   await expect(page.getByRole('heading', { name: /Welcome, Jim/ })).toBeVisible()
+  await page.getByRole('tab', { name: 'Build progress' }).click()
   await expect(page.getByText('Contacts, Companies & Properties')).toBeVisible()
   await expect(page.getByText('Hardening')).toBeVisible()
 })
 
-test('unbuilt screens say coming soon', async ({ page }) => {
+test('screens that are not built yet say coming soon', async ({ page }) => {
   await login(page)
-  await page.goto('/reports')
+  await page.goto('/inbox')
   await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible()
 })

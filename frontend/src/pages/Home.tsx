@@ -1,7 +1,5 @@
 import { CheckCircle2, Circle, Loader2, Server, MonitorSmartphone } from 'lucide-react'
 import { useProgress, type Stage } from '@/api/progress'
-import { useAuth } from '@/api/auth'
-import { PageHeader } from '@/components/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -42,9 +40,8 @@ function StageCard({ s }: { s: Stage }) {
   )
 }
 
-export default function Home() {
+export function BuildProgress() {
   const { data } = useProgress()
-  const { user } = useAuth()
   const stages = data?.stages ?? []
   const total = stages.length * 2
   const done = stages.reduce((n, s) => n + (s.backend === 'done' ? 1 : 0) + (s.frontend === 'done' ? 1 : 0), 0)
@@ -52,7 +49,7 @@ export default function Home() {
 
   return (
     <div>
-      <PageHeader title={`Welcome, ${user?.name.split(' ')[0]}`} subtitle="This CRM is being built live: backend first with tests, then the screens. Refreshes every few seconds." />
+      <p className="mb-4 text-sm text-muted-foreground">This CRM is being built live, in stages: backend first with passing tests, then the screens. Refreshes every few seconds.</p>
       <Card className="mb-6 overflow-hidden">
         <CardContent className="pt-5">
           <div className="mb-2 flex items-end justify-between">

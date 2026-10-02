@@ -11,7 +11,7 @@ def test_health(client):
 
 def test_progress_lists_all_stages(client):
     stages = client.get("/api/progress").json()["stages"]
-    assert [s["id"] for s in stages] == list(range(9))
+    assert [s["id"] for s in stages] == list(range(12))
 
 
 def test_login_success_and_me(client, users):
