@@ -3,6 +3,7 @@ import tempfile
 
 _tmp = tempfile.mkdtemp(prefix="trg-test-")
 os.environ["TRG_DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
+os.environ["TRG_SCHEDULER"] = "0"
 os.environ["TRG_STORAGE_DIR"] = f"{_tmp}/storage"
 
 import pytest  # noqa: E402

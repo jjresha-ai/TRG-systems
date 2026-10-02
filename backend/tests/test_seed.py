@@ -48,3 +48,19 @@ def test_both_property_types_and_all_markets(seeded):
 
 def test_duplicate_review_queue_has_items(seeded):
     assert n(seeded, "select count(*) from duplicate_candidates where status='pending'") >= 3
+
+
+def test_pipeline_volumes(seeded):
+    assert n(seeded, "select count(*) from leads") >= 100
+    assert n(seeded, "select count(*) from listings") >= 50
+    assert n(seeded, "select count(*) from buyer_interests") >= 200
+    assert n(seeded, "select count(distinct status) from listings") == 6
+
+
+def test_at_most_one_active_sale_listing_per_property(seeded):
+    assert n(seeded, "select count(*) from (select property_id from listings where status in ('active','under_contract') and listing_type='sale' group by property_id having count(*)>1)") == 0
+
+
+def test_listing_dates_are_coherent(seeded):
+    assert n(seeded, "select count(*) from listings where expiration_date is not null and agreement_date is not null and expiration_date <= agreement_date") == 0
+    assert n(seeded, "select count(*) from listings where status='closed' and (sold_price is null or closed_date is null)") == 0

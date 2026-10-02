@@ -10,6 +10,7 @@ from .users import seed_users
 # Each stage appends its seeder module name here as it lands.
 STAGE_SEEDERS = [
     "core_seed",
+    "pipeline_seed",
 ]
 
 
