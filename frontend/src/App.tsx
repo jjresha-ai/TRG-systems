@@ -10,6 +10,9 @@ import CompanyDetail from '@/pages/CompanyDetail'
 import Properties from '@/pages/Properties'
 import PropertyDetail from '@/pages/PropertyDetail'
 import Duplicates from '@/pages/Duplicates'
+import Prospecting from '@/pages/Prospecting'
+import Listings from '@/pages/Listings'
+import ListingDetail from '@/pages/ListingDetail'
 
 export default function App() {
   return (
@@ -23,6 +26,9 @@ export default function App() {
         <Route path="/companies/:id" element={<CompanyDetail />} />
         <Route path="/properties" element={<Properties />} />
         <Route path="/properties/:id" element={<PropertyDetail />} />
+        <Route path="/prospecting" element={<Prospecting />} />
+        <Route path="/listings" element={<Listings />} />
+        <Route path="/listings/:id" element={<ListingDetail />} />
         <Route path="/duplicates" element={<Duplicates />} />
         <Route path="*" element={<ComingSoon />} />
       </Route>
