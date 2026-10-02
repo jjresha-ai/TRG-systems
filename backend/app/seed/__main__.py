@@ -16,6 +16,7 @@ STAGE_SEEDERS = [
     "investors_seed",
     "reports_seed",
     "platform_seed",
+    "imports_seed",
 ]
 
 

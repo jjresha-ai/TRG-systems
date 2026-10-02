@@ -148,3 +148,12 @@ def test_platform_seed(seeded):
     assert n(seeded, "select count(*) from lists") >= 4
     assert n(seeded, "select count(*) from properties where custom like '%seller_motivation%'") >= 50
     assert n(seeded, "select count(*) from contacts where tags like '%call-campaign-q4%'") >= 5
+
+
+def test_import_history_seeded_with_real_files(seeded):
+    import os
+    assert n(seeded, "select count(*) from import_jobs where status='completed'") >= 2
+    for (path,) in seeded.execute("select file_path from import_jobs"):
+        assert os.path.exists(path) and os.path.getsize(path) > 100
+    assert n(seeded, "select count(*) from properties where import_job_id is not null") >= 50
+    assert n(seeded, "select count(*) from import_rows where action='error'") >= 2

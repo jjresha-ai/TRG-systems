@@ -17,9 +17,9 @@ from .models.core_sys import User
 ROLES = ["admin", "manager", "broker", "assistant", "read_only"]
 # action permissions per role (ADR 0017). Entities share the table; restricted fields are handled separately.
 ROLE_ACTIONS = {
-    "admin": {"view", "create", "edit", "delete", "export", "admin"},
-    "manager": {"view", "create", "edit", "delete", "export"},
-    "broker": {"view", "create", "edit", "export"},
+    "admin": {"view", "create", "edit", "delete", "export", "import", "admin"},
+    "manager": {"view", "create", "edit", "delete", "export", "import"},
+    "broker": {"view", "create", "edit", "export", "import"},
     "assistant": {"view", "create", "edit"},
     "read_only": {"view"},
 }

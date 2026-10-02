@@ -18,8 +18,8 @@ router = APIRouter(prefix="/api", tags=["reports"])
 
 def respond(db: Session, user: User, name: str, report: dict, fmt: str | None):
     if fmt == "csv":
-        if "export" not in ROLE_ACTIONS.get(user.role, set()):
-            raise HTTPException(403, f"Role '{user.role}' may not export")
+        from ..services import exports as exp
+        exp.check_export_allowed(user)
         db.info["actor"], db.info["actor_id"] = user.name, user.id
         log_event(db, "export", "reports", None, {"report": name, "rows": len(report["rows"])})  # exports are audited (ADR 0018)
         db.commit()
