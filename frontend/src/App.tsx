@@ -11,6 +11,8 @@ import Properties from '@/pages/Properties'
 import PropertyDetail from '@/pages/PropertyDetail'
 import Duplicates from '@/pages/Duplicates'
 import Prospecting from '@/pages/Prospecting'
+import Deals from '@/pages/Deals'
+import DealDetail from '@/pages/DealDetail'
 import Listings from '@/pages/Listings'
 import ListingDetail from '@/pages/ListingDetail'
 
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/properties" element={<Properties />} />
         <Route path="/properties/:id" element={<PropertyDetail />} />
         <Route path="/prospecting" element={<Prospecting />} />
+        <Route path="/deals" element={<Deals />} />
+        <Route path="/deals/:id" element={<DealDetail />} />
         <Route path="/listings" element={<Listings />} />
         <Route path="/listings/:id" element={<ListingDetail />} />
         <Route path="/duplicates" element={<Duplicates />} />
