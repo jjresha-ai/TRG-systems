@@ -64,3 +64,25 @@ def test_at_most_one_active_sale_listing_per_property(seeded):
 def test_listing_dates_are_coherent(seeded):
     assert n(seeded, "select count(*) from listings where expiration_date is not null and agreement_date is not null and expiration_date <= agreement_date") == 0
     assert n(seeded, "select count(*) from listings where status='closed' and (sold_price is null or closed_date is null)") == 0
+
+
+def test_deals_volumes_and_every_pipeline_used(seeded):
+    assert n(seeded, "select count(*) from deals") >= 80
+    assert n(seeded, "select count(distinct pipeline_id) from deals") == 4
+    assert n(seeded, "select count(*) from deal_stage_history") >= 300
+
+
+def test_deal_rules_hold_in_seed(seeded):
+    assert n(seeded, "select count(*) from deals d join stages s on s.id=d.stage_id where s.is_won=1 and (d.price is null or d.price<=0 or d.status!='won')") == 0
+    assert n(seeded, "select count(*) from deals d join stages s on s.id=d.stage_id where s.is_lost=1 and (d.lost_reason is null or d.status!='lost')") == 0
+    assert n(seeded, "select count(*) from deals d where not exists (select 1 from deal_stage_history h where h.deal_id=d.id)") == 0
+    assert n(seeded, "select count(*) from (select deal_id from commission_splits where split_type='percent' group by deal_id having sum(pct) > 100.001)") == 0
+
+
+def test_history_last_row_matches_current_stage(seeded):
+    bad = n(seeded, "select count(*) from deals d where d.stage_id != (select to_stage_id from deal_stage_history h where h.deal_id=d.id order by h.at desc, h.id desc limit 1)")
+    assert bad == 0
+
+
+def test_snapshots_cover_a_year(seeded):
+    assert n(seeded, "select count(distinct taken_on) from pipeline_snapshots") >= 50

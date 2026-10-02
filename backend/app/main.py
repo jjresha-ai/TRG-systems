@@ -4,11 +4,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .db import Base, engine
-from .routers import auth, system, contacts, companies, properties, search, leads, listings, jobs
+from .routers import auth, system, contacts, companies, properties, search, leads, listings, jobs, deals
 from . import models  # noqa: F401  (register tables)
-from .services import prospecting, listings as listings_svc  # noqa: F401  (register jobs)
+from .services import prospecting, listings as listings_svc, deals as deals_svc  # noqa: F401  (register jobs, hooks)
 
-ROUTERS = [system.router, auth.router, contacts.router, companies.router, properties.router, search.router, leads.router, listings.router, jobs.router]
+ROUTERS = [system.router, auth.router, contacts.router, companies.router, properties.router, search.router, leads.router, listings.router, jobs.router, deals.router]
 
 
 @asynccontextmanager

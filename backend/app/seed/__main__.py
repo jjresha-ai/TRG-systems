@@ -11,6 +11,7 @@ from .users import seed_users
 STAGE_SEEDERS = [
     "core_seed",
     "pipeline_seed",
+    "deals_seed",
 ]
 
 

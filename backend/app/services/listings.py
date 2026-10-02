@@ -19,6 +19,7 @@ TRANSITIONS = {
     "closed": set(), "expired": {"active"}, "withdrawn": {"prospect", "active"},
 }
 ON_UNDER_CONTRACT = []  # hooks registered by the deals stage: fn(db, listing, user_id)
+ON_TRANSITION = []  # fn(db, listing, old_status, new_status, extra, user_id)
 
 
 def assert_single_active_sale(db: Session, listing: Listing):
@@ -63,6 +64,7 @@ def create_listing(db: Session, data: dict, user_id: int) -> Listing:
 def transition(db: Session, l: Listing, new: str, extra: dict, user_id: int | None) -> Listing:
     if new == l.status:
         return l
+    old = l.status
     if new not in TRANSITIONS.get(l.status, set()):
         raise HTTPException(409, f"Cannot move a {l.status} listing to {new}")
     if new == "active":
@@ -89,6 +91,8 @@ def transition(db: Session, l: Listing, new: str, extra: dict, user_id: int | No
     else:
         l.status = new
     db.flush()
+    for hook in ON_TRANSITION:
+        hook(db, l, old, new, extra, user_id)
     return l
 
 
