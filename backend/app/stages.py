@@ -9,7 +9,7 @@ STAGES = [
     {"id": 6, "name": "Reports & Dashboard", "adrs": "0021", "backend": "done", "frontend": "done", "blurb": "Production, forecast, owner recency"},
     {"id": 7, "name": "Lists, Views & Custom Fields", "adrs": "0015, 0019", "backend": "done", "frontend": "done", "blurb": "Filter builder, saved views, dynamic lists, tags, custom fields"},
     {"id": 8, "name": "Import & Export", "adrs": "0016", "backend": "done", "frontend": "done", "blurb": "CSV/XLSX import with preview, dedupe, rollback; permission-aware export"},
-    {"id": 9, "name": "Security, Audit & Automation", "adrs": "0017, 0018, 0020", "backend": "building", "frontend": "soon", "blurb": "Users and roles, API tokens, audit trail, workflow rules"},
+    {"id": 9, "name": "Security, Audit & Automation", "adrs": "0017, 0018, 0020", "backend": "done", "frontend": "building", "blurb": "Users and roles, API tokens, audit trail, workflow rules"},
     {"id": 10, "name": "Email, Calendar & Mobile", "adrs": "0014, 0022", "backend": "soon", "frontend": "soon", "blurb": "Email capture and association, calendar, quick-add, caller lookup, PWA"},
     {"id": 11, "name": "Hardening", "adrs": "all", "backend": "soon", "frontend": "soon", "blurb": "Full test run, demo polish"},
 ]

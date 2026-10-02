@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, Timestamped, utcnow
@@ -38,3 +38,13 @@ class JobRun(Timestamped, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     status: Mapped[str] = mapped_column(String(20), default="running")
     summary: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+@event.listens_for(AuditEvent, "before_update")
+def _audit_no_update(mapper, conn, target):
+    raise ValueError("AuditEvent is append-only")
+
+
+@event.listens_for(AuditEvent, "before_delete")
+def _audit_no_delete(mapper, conn, target):
+    raise ValueError("AuditEvent is append-only")

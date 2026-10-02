@@ -157,3 +157,14 @@ def test_import_history_seeded_with_real_files(seeded):
         assert os.path.exists(path) and os.path.getsize(path) > 100
     assert n(seeded, "select count(*) from properties where import_job_id is not null") >= 50
     assert n(seeded, "select count(*) from import_rows where action='error'") >= 2
+
+
+def test_security_and_automation_seed(seeded):
+    assert n(seeded, "select count(*) from rules") >= 5
+    assert n(seeded, "select count(*) from rule_action_log") >= 5
+    assert n(seeded, "select count(*) from audit_events") >= 1000
+    assert n(seeded, "select count(distinct action) from audit_events") >= 8
+    assert n(seeded, "select count(*) from api_tokens where revoked_at is null") >= 1
+    assert n(seeded, "select count(*) from activities where source_key like 'r%:%'") >= 3  # tasks created by rules running over real data
+    # a seeded token is stored hashed: no row contains a recognisable secret
+    assert n(seeded, "select count(*) from api_tokens where token_hash like 'trg_%'") == 0

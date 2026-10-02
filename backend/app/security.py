@@ -6,7 +6,8 @@ import json
 import secrets
 import time
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import config
@@ -63,10 +64,34 @@ def read_token(token: str) -> int | None:
         return None
 
 
-def current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
+def hash_api_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def current_user(request: Request, authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Not authenticated")
-    uid = read_token(authorization[7:])
+    bearer = authorization[7:].strip()
+    user = None
+    if bearer.startswith("trg_"):
+        from .audit import log_event
+        from .db import utcnow
+        from .models.security import ApiToken
+        tok = db.scalar(select(ApiToken).where(ApiToken.token_hash == hash_api_token(bearer)))
+        if not tok or tok.revoked_at or (tok.expires_at and tok.expires_at < utcnow()):
+            raise HTTPException(401, "Invalid, revoked or expired API token")
+        user = db.get(User, tok.user_id)
+        if not user or not user.active:
+            raise HTTPException(401, "The token's user is inactive")
+        user.token_scopes = set(tok.scopes) & ROLE_ACTIONS.get(user.role, set())  # a token can never exceed its user's role
+        db.info["actor"], db.info["actor_id"] = f"{user.name} (API token '{tok.name}')", user.id
+        tok.last_used_at = utcnow()
+        log_event(db, "api_token_use", "api_tokens", tok.id, {"method": request.method, "path": request.url.path})  # every use is audited (ADR 0018)
+        db.commit()
+        current_actor.set(db.info["actor"])
+        current_actor_id.set(user.id)
+        return user
+    uid = read_token(bearer)
     user = db.get(User, uid) if uid else None
     if not user or not user.active:
         raise HTTPException(401, "Invalid or expired token")
@@ -80,6 +105,9 @@ def require(action: str):
     def dep(user: User = Depends(current_user)) -> User:
         if action not in ROLE_ACTIONS.get(user.role, set()):
             raise HTTPException(403, f"Role '{user.role}' may not {action}")
+        scopes = getattr(user, "token_scopes", None)
+        if scopes is not None and action not in scopes:
+            raise HTTPException(403, f"This API token is not scoped for '{action}'")
         return user
     return dep
 

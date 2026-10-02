@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import log_event
 from ..db import get_db
 from ..models.core import Contact, DuplicateCandidate, MergeLog
 from ..models.core_sys import User
@@ -76,6 +77,7 @@ def do_merge(body: MergeIn, db: Session = Depends(get_db), user: User = Depends(
     if body.entity not in merge_svc.MODELS:
         raise HTTPException(422, "entity must be contact, company or property")
     log = merge_svc.merge(db, body.entity, body.survivor_id, body.absorbed_id, body.choices, user.id)
+    log_event(db, "merge", "merge_logs", log.id, {"entity": body.entity, "survivor": body.survivor_id, "absorbed": body.absorbed_id, "moved": len(log.moved)})
     db.commit()
     return {"merge_id": log.id, "moved": len(log.moved), "survivor_id": log.survivor_id}
 
@@ -89,5 +91,6 @@ def merges(db: Session = Depends(get_db), _: User = Depends(require("view"))):
 @router.post("/merges/{mid}/undo")
 def undo(mid: int, db: Session = Depends(get_db), _: User = Depends(require("delete"))):
     merge_svc.undo(db, mid)
+    log_event(db, "merge_undo", "merge_logs", mid, {})
     db.commit()
     return {"status": "undone"}

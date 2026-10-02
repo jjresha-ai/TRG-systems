@@ -3,7 +3,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from datetime import timedelta
+
 from ..audit import log_event
+from ..db import utcnow
+from ..models.core_sys import AuditEvent
 from ..db import get_db
 from ..models.core_sys import User
 from ..security import current_user, hash_password, make_token
@@ -33,7 +37,14 @@ class TokenOut(BaseModel):
 
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
+    email = body.email.strip().lower()
+    recent = [e for e in db.scalars(select(AuditEvent).where(AuditEvent.action == "login_failed", AuditEvent.timestamp >= utcnow() - timedelta(minutes=15)).order_by(AuditEvent.id.desc()).limit(200))
+              if (e.changes or {}).get("email", "").strip().lower() == email]
+    if len(recent) >= 5:
+        log_event(db, "login_locked", "users", None, {"email": email})
+        db.commit()
+        raise HTTPException(429, "Too many failed sign-in attempts. Try again in 15 minutes.")
+    user = db.scalar(select(User).where(User.email == email))
     ok = bool(user and user.active and hash_password(body.password, user.salt) == user.password_hash)
     log_event(db, "login" if ok else "login_failed", "users", user.id if user else None, {"email": body.email})
     db.commit()
