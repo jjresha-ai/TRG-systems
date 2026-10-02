@@ -131,3 +131,12 @@ def test_fund_rules_hold_in_seed(seeded):
     assert n(seeded, "select count(*) from commitments c join investor_profiles p on p.id=c.investor_id where c.status in ('committed','funded') and p.accreditation_status != 'accredited'") == 0
     assert n(seeded, "select count(*) from commitments c join funds f on f.id=c.fund_id where c.status != 'interested' and c.amount < f.minimum_investment") == 0
     assert n(seeded, "select count(*) from commitments where status='funded' and funded_on is null") == 0
+
+
+def test_goals_seeded_and_reports_have_substance(seeded):
+    assert n(seeded, "select count(*) from goals") >= 10
+    assert n(seeded, "select count(*) from goals where user_id is null and period_type='year'") == 4
+
+
+def test_year_of_closed_production_exists(seeded):
+    assert n(seeded, "select count(*) from deals d join stages s on s.id=d.stage_id where s.is_won=1 and d.actual_close_date >= date('now','-365 days')") >= 15

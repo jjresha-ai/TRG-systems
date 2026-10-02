@@ -1,1 +1,1 @@
-from . import core, core_sys, deals, investors, pipeline, work  # noqa: F401
+from . import core, core_sys, deals, investors, pipeline, reports, work  # noqa: F401

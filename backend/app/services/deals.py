@@ -137,7 +137,10 @@ def change_stage(db: Session, d: Deal, stage_id: int | None, stage_key: str | No
     elif stage.is_won:
         if not d.price or d.price <= 0:
             raise HTTPException(422, "A price is required before closing a deal")
-        d.status, d.actual_close_date = "won", extra.get("actual_close_date") or date.today()
+        closed = extra.get("actual_close_date") or date.today()
+        if closed > date.today():
+            raise HTTPException(422, "actual_close_date cannot be in the future")
+        d.status, d.actual_close_date = "won", closed
         d.lost_reason = None
     else:
         if stage.key == "under_contract" and not d.price:

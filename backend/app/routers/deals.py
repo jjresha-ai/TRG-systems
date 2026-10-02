@@ -62,6 +62,7 @@ class StageIn(BaseModel):
     lost_reason: str | None = None
     dd_expiry_date: date | None = None
     expected_close_date: date | None = None
+    actual_close_date: date | None = None
     note: str | None = None
 
 
