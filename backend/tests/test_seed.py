@@ -168,3 +168,12 @@ def test_security_and_automation_seed(seeded):
     assert n(seeded, "select count(*) from activities where source_key like 'r%:%'") >= 3  # tasks created by rules running over real data
     # a seeded token is stored hashed: no row contains a recognisable secret
     assert n(seeded, "select count(*) from api_tokens where token_hash like 'trg_%'") == 0
+
+
+def test_mail_and_calendar_volumes(seeded):
+    assert n(seeded, "select count(*) from email_messages") >= 120
+    assert n(seeded, "select count(*) from email_messages where direction='inbound'") > 20 and n(seeded, "select count(*) from email_messages where direction='outbound'") > 20
+    assert n(seeded, "select count(*) from email_messages where id not in (select email_id from email_associations)") >= 1  # unlinked triage queue is populated
+    assert n(seeded, "select count(*) from calendar_events") >= 30
+    assert n(seeded, "select count(*) from bulk_sends") >= 1 and n(seeded, "select count(*) from email_templates") >= 3
+    assert n(seeded, "select count(*) from email_associations a where a.record_type='contact' and not exists (select 1 from contacts c where c.id=a.record_id)") == 0

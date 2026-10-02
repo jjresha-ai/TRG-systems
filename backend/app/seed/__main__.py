@@ -18,6 +18,7 @@ STAGE_SEEDERS = [
     "platform_seed",
     "imports_seed",
     "security_seed",
+    "mail_seed",
 ]
 
 
