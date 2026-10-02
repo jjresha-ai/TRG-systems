@@ -17,8 +17,8 @@ test('login shows the live build home with all stages', async ({ page }) => {
   await expect(page.getByText('Hardening')).toBeVisible()
 })
 
-test('screens that are not built yet say coming soon', async ({ page }) => {
+test('an unknown route says so instead of rendering a blank page', async ({ page }) => {
   await login(page)
-  await page.goto('/inbox')
-  await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible()
+  await page.goto('/no-such-screen')
+  await expect(page.getByText('This page does not exist.')).toBeVisible()
 })

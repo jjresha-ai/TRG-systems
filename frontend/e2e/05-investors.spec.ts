@@ -57,7 +57,7 @@ test('fund detail: add a commitment to a raising fund', async ({ page }) => {
 
 test('listing detail suggests matching investors and responds to leverage', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Listings' }).click()
+  await page.getByRole('link', { name: 'Listings', exact: true }).click()
   await page.getByRole('tab', { name: 'Active' }).click()
   await page.locator('tbody tr').first().click()
   await expect(page.getByRole('heading', { name: 'Matching investors' })).toBeVisible()

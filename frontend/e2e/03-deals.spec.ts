@@ -6,7 +6,7 @@ test.use({ viewport: { width: 2600, height: 1100 } })
 
 test('board shows the seller pipeline with stage totals and forecast', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   for (const s of ['prospect', 'marketing', 'under_contract', 'closed']) await expect(page.getByTestId(`stage-${s}`)).toBeVisible()
   await expect(page.getByText('Weighted commission').first()).toBeVisible()
   await expect(page.getByText(/Forecast by expected close month/)).toBeVisible()
@@ -15,7 +15,7 @@ test('board shows the seller pipeline with stage totals and forecast', async ({ 
 
 test('drag a deal to the next stage and the backend records it', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.recharts-surface').first()).toBeVisible()
   const from = page.getByTestId('stage-marketing')
@@ -34,7 +34,7 @@ test('drag a deal to the next stage and the backend records it', async ({ page }
 
 test('dragging to Lost asks for a reason (backend rule) and records it', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await page.getByTestId('stage-prospect').getByTestId('deal-card').first().click()
   await page.getByRole('button', { name: 'Lost', exact: true }).click()
   await page.getByLabel('Lost reason').fill('Owner decided to hold')
@@ -44,7 +44,7 @@ test('dragging to Lost asks for a reason (backend rule) and records it', async (
 
 test('a capital deal can be closed from the stage stepper and history records it', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await page.getByRole('tab', { name: 'Capital' }).click()
   await page.getByTestId('stage-committed').getByTestId('deal-card').first().click()
   await page.getByRole('button', { name: 'Closed', exact: true }).click()
@@ -54,7 +54,7 @@ test('a capital deal can be closed from the stage stepper and history records it
 
 test('commission splits over 100% are rejected', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await page.getByTestId('stage-under_contract').getByTestId('deal-card').first().click()
   await expect(page.getByRole('heading', { name: 'Commission splits' })).toBeVisible()
   await page.getByRole('heading', { name: 'Commission splits' }).locator('xpath=../..').getByRole('button', { name: 'Edit' }).click()
@@ -69,7 +69,7 @@ test('commission splits over 100% are rejected', async ({ page }) => {
 
 test('read-only role sees volume but not commission', async ({ page }) => {
   await login(page, 'auditor@resha.group')
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await expect(page.getByText('Restricted').first()).toBeVisible()
   await expect(page.getByText('Weighted commission')).toHaveCount(0)
   await page.getByTestId('deal-card').first().click()

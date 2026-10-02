@@ -123,7 +123,7 @@ test('admin defines a required field and the backend enforces it on create', asy
 
 test('restricted custom fields are invisible to assistants', async ({ page }) => {
   await login(page, 'priya@resha.group')
-  await page.getByRole('link', { name: 'Deals' }).click()
+  await page.getByRole('link', { name: 'Deals', exact: true }).click()
   await page.getByTestId('deal-card').first().click()
   await expect(page.getByTestId('custom-fields').getByText('Referral fee note')).toHaveCount(0)
 })

@@ -8,7 +8,7 @@ TRG Systems is a CRM for The Resha Group (commercial real estate investment sale
 
 Core domain concepts: contacts, owner entities (LLCs), properties, listings, deals, buyer interest, investor profiles, and funds/syndications. Key workflows: owner prospecting with hold/sell triggers (hold period, loan maturity, ownership change), listing and closed-deal pipelines, and matching investors to listings.
 
-The repo currently holds docs only: no application code exists yet.
+The application is built (stages 0-11 in `docs/PLAN.md`): a FastAPI backend in `backend/` and a React frontend in `frontend/`, with a deterministic demo seed.
 
 ## Read first
 
@@ -31,9 +31,24 @@ The repo currently holds docs only: no application code exists yet.
 4. If UI work exposes a backend gap, go back to the backend, add the fix with tests, then resume the UI.
 5. Record significant decisions as new ADRs, numbered sequentially (`NNNN-short-title.md`).
 
-## Open decisions (each needs its own ADR before implementation)
+## Decisions recorded since (ADRs 0023-0034)
 
-Database and ORM/migrations, backend test tooling, authentication, background jobs, hosting, frontend build tooling (Vite or Next.js), state management and data fetching, email provider (Microsoft 365 or Google), and owner-data vendors.
+Database and ORM (SQLAlchemy 2.x on SQLite, portable to Postgres), pytest with a real database and no mocks, token auth with roles, in-process job scheduler, hosting, Vite + TanStack Query, Playwright with an isolated e2e environment, Python-evaluated filters, import commit via background tasks, rules triggered from the audit trail. Email uses a provider interface with database-backed capture: no Microsoft 365/Google sync yet, and sending returns 501 until a provider is chosen (ADR 0029). Still open: owner-data vendors, and the final mail provider.
+
+## Running it
+
+- Backend: `cd backend && pip install -r requirements.txt && python -m app.seed && uvicorn app.main:app --reload` (port 8000). Demo logins use password `demo1234` (jim@resha.group is admin).
+- Frontend: `cd frontend && npm install && npm run dev` (port 5173, proxies `/api`).
+- Tests: `cd backend && python -m pytest -q`; `cd frontend && npx playwright test` (starts its own isolated backend, database and Vite on ports 8100/5273 and reseeds each run).
+- Build progress shown on the home page comes from `backend/app/stages.py`; update it with `python setstage.py <stage> <backend|frontend> <done|building|next|soon>`.
+
+## Known limits (flag before relying on them)
+
+- Filters are evaluated in Python (ADR 0032); move to SQL before data grows well past tens of thousands of rows.
+- SQLite-specific JSON `LIKE` queries must be revisited when moving to Postgres.
+- The scheduler is single-process (`TRG_SCHEDULER`); run one worker or move jobs to a real queue.
+- "Must be accredited to commit to a fund" is an assumption to confirm with securities counsel (Reg D).
+- Default record visibility (firm-open versus team-scoped) is an `AppSetting`; confirm the default with the firm.
 
 ## Conventions
 

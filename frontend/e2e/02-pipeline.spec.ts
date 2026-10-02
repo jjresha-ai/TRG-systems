@@ -32,7 +32,7 @@ test('trigger rules tab: admin runs the hold/sell job, second run is a no-op', a
 
 test('listings: status filter, detail with buyer funnel, advancing a buyer', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Listings' }).click()
+  await page.getByRole('link', { name: 'Listings', exact: true }).click()
   await page.getByRole('tab', { name: 'Active' }).click()
   await expect(page.locator('tbody tr').first()).toBeVisible()
   for (const badge of await page.locator('tbody tr td:nth-child(2)').allInnerTexts()) expect(badge.toLowerCase()).toContain('active')
@@ -46,7 +46,7 @@ test('listings: status filter, detail with buyer funnel, advancing a buyer', asy
 
 test('new listing flow enforces one active sale listing per property', async ({ page }) => {
   await login(page)
-  await page.getByRole('link', { name: 'Listings' }).click()
+  await page.getByRole('link', { name: 'Listings', exact: true }).click()
   await page.getByRole('tab', { name: 'Active' }).click()
   const addr = (await page.locator('tbody tr').first().locator('td').first().locator('div').nth(1).innerText()).split(',')[0].trim()
   const street = (await page.locator('tbody tr').first().locator('td').first().locator('div').first().innerText()).trim()
@@ -64,7 +64,7 @@ test('new listing flow enforces one active sale listing per property', async ({ 
 
 test('commission is restricted for read-only users', async ({ page }) => {
   await login(page, 'auditor@resha.group')
-  await page.getByRole('link', { name: 'Listings' }).click()
+  await page.getByRole('link', { name: 'Listings', exact: true }).click()
   await page.locator('tbody tr').first().click()
   await expect(page.getByText('Restricted')).toBeVisible()
   await expect(page.getByText('Expected commission')).toHaveCount(0)
