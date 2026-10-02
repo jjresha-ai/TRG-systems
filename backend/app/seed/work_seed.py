@@ -168,7 +168,8 @@ def seed(db, ctx):
         p, c, co = pick(owner_pairs)
         u = jim if random.random() < 0.4 else pick(brokers)
         t = pick(["call", "call", "email", "meeting"])
-        subj = pick(["Call", "Follow up with", "Send comps to", "Schedule meeting with"]) + f" {c.full_name}: " + pick(["loan maturity", "listing interest", "market update", "hold/sell decision", "tenant renewal", "refi quote"])
+        verb = {"call": ["Call", "Follow-up call with"], "email": ["Email", "Send comps to"], "meeting": ["Schedule meeting with", "Meet with"]}[t]
+        subj = pick(verb) + f" {c.full_name}: " + pick(["loan maturity", "listing interest", "market update", "hold/sell decision", "tenant renewal", "refi quote"])
         add_act(t, subj, [("contact", c.id), ("property", p.id)], u, due=due_at(days), prio=pick(["normal", "normal", "high", "low"]))
         n_open += 1
     for c in random.sample(ctx["owner_contacts"], 12):

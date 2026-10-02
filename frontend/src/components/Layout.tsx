@@ -1,5 +1,8 @@
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
-import { LogOut, Sparkles } from 'lucide-react'
+import { Bell, LogOut, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { useApi, useSend } from '@/api/hooks'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/api/auth'
 import { useProgress } from '@/api/progress'
 import { NAV } from '@/nav'
@@ -55,12 +58,30 @@ export default function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b bg-card/70 px-6 py-3 backdrop-blur">
           <GlobalSearch />
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <Notifications />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="live-dot h-2 w-2 rounded-full bg-accent" /> <Sparkles className="h-3.5 w-3.5" /> Live build in progress
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 md:p-8"><Outlet /></main>
       </div>
+    </div>
+  )
+}
+
+function Notifications() {
+  const [open, setOpen] = useState(false)
+  const qc = useQueryClient()
+  const { data } = useApi<{ unread: number; items: { id: number; message: string; read: boolean; record_type: string | null; record_id: number | null }[] }>('/notifications', undefined, { refetchInterval: 10000 })
+  const readAll = useSend<null>('POST', '/notifications/read-all')
+  return (
+    <div className="relative ml-auto">
+      <button aria-label="Notifications" onClick={() => setOpen(!open)} className="relative cursor-pointer rounded-md p-2 hover:bg-secondary"><Bell className="h-4 w-4" />
+        {!!data?.unread && <span data-testid="unread-badge" className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">{data.unread}</span>}</button>
+      {open && (<div role="dialog" aria-label="Notifications panel" className="absolute right-0 z-40 mt-1 w-80 rounded-lg border bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b px-3 py-2 text-sm font-semibold">Notifications<button className="cursor-pointer text-xs font-normal text-primary hover:underline" onClick={() => readAll.mutate(null, { onSuccess: () => qc.invalidateQueries() })}>Mark all read</button></div>
+        <div className="max-h-80 overflow-y-auto">{data?.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No notifications.</p>}
+          {data?.items.map((n) => <div key={n.id} className={`border-b px-3 py-2 text-sm last:border-0 ${n.read ? 'text-muted-foreground' : 'bg-accent/10'}`}>{n.message}</div>)}</div></div>)}
     </div>
   )
 }

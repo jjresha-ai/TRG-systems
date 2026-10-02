@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { login } from './helpers'
 
+// wide viewport so every kanban column is on screen: HTML5 drag-and-drop between off-screen columns is not a realistic user action
+test.use({ viewport: { width: 2600, height: 1100 } })
+
 test('board shows the seller pipeline with stage totals and forecast', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Deals' }).click()
@@ -13,11 +16,14 @@ test('board shows the seller pipeline with stage totals and forecast', async ({ 
 test('drag a deal to the next stage and the backend records it', async ({ page }) => {
   await login(page)
   await page.getByRole('link', { name: 'Deals' }).click()
+  await page.waitForLoadState('networkidle')
+  await expect(page.locator('.recharts-surface').first()).toBeVisible()
   const from = page.getByTestId('stage-marketing')
   const to = page.getByTestId('stage-offers')
   const countBefore = Number((await to.locator('h3').locator('xpath=following-sibling::span').innerText()).trim())
-  const card = from.getByTestId('deal-card').first()
-  const href = await card.getAttribute('href')
+  const href = await from.getByTestId('deal-card').first().getAttribute('href')
+  const card = from.locator(`a[href="${href}"]`)
+  await card.scrollIntoViewIfNeeded()
   await card.dragTo(to)
   await expect(to.locator(`a[href="${href}"]`)).toBeVisible()
   await expect(to.locator('h3').locator('xpath=following-sibling::span')).toHaveText(String(countBefore + 1))

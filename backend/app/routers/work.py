@@ -350,7 +350,11 @@ def timeline(record_type: str, record_id: int, db: Session = Depends(get_db), us
     for n in db.scalars(select(Note).where(Note.deleted_at.is_(None), or_(Note.visibility == "team", Note.author_user_id == user.id),
                                            Note.id.in_(select(NoteAssociation.note_id).where(NoteAssociation.record_type == record_type, NoteAssociation.record_id == record_id)))):
         items.append({"kind": "note", "at": n.created_at, "data": svc.note_out(db, n, names)})
+    latest: dict = {}
     for d in db.scalars(select(Document).where(Document.deleted_at.is_(None), Document.id.in_(select(DocumentAssociation.document_id).where(DocumentAssociation.record_type == record_type, DocumentAssociation.record_id == record_id)))):
+        if d.group_id not in latest or d.version > latest[d.group_id].version:
+            latest[d.group_id] = d  # the timeline shows the current version; older versions via /documents/{id}/versions
+    for d in latest.values():
         items.append({"kind": "document", "at": d.created_at, "data": svc.doc_out(db, d, names)})
     for ext in TIMELINE_PROVIDERS:
         items += ext(db, record_type, record_id, user, names)

@@ -244,3 +244,13 @@ def test_timeline_orders_upcoming_and_history(client, admin):
     tl = client.get("/api/timeline", params={"record_type": "contact", "record_id": c["id"]}, headers=admin).json()
     assert [i["data"]["subject"] for i in tl["upcoming"]] == ["Future call"]
     assert {i["kind"] for i in tl["history"]} == {"activity", "note"} and len(tl["pinned"]) == 1
+
+
+def test_timeline_shows_only_current_document_version(client, admin):
+    p = mk_property(client, admin)
+    rec = {"record_type": "property", "record_id": p["id"]}
+    upload(client, admin, rec)
+    upload(client, admin, rec, content=PDF + b"\n% v2")
+    tl = client.get("/api/timeline", params={"record_type": "property", "record_id": p["id"]}, headers=admin).json()
+    docs = [i for i in tl["history"] if i["kind"] == "document"]
+    assert len(docs) == 1 and docs[0]["data"]["version"] == 2 and docs[0]["data"]["versions"] == 2
