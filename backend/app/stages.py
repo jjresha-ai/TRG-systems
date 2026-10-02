@@ -5,7 +5,7 @@ STAGES = [
     {"id": 2, "name": "Leads & Listings", "adrs": "0007, 0008", "backend": "done", "frontend": "done", "blurb": "Hold/sell triggers, listing pipeline, buyer interest"},
     {"id": 3, "name": "Deals & Pipelines", "adrs": "0010", "backend": "done", "frontend": "done", "blurb": "Kanban pipeline, commission splits, stage history"},
     {"id": 4, "name": "Activities, Notes & Documents", "adrs": "0011, 0012, 0013", "backend": "done", "frontend": "done", "blurb": "Tasks, cadences, timeline, document versions"},
-    {"id": 5, "name": "Investors & Funds", "adrs": "0009", "backend": "building", "frontend": "soon", "blurb": "Investor profiles, syndications, listing matching"},
+    {"id": 5, "name": "Investors & Funds", "adrs": "0009", "backend": "done", "frontend": "building", "blurb": "Investor profiles, syndications, listing matching"},
     {"id": 6, "name": "Reports & Dashboard", "adrs": "0021", "backend": "soon", "frontend": "soon", "blurb": "Production, forecast, owner recency"},
     {"id": 7, "name": "Platform", "adrs": "0014, 0016-0020, 0022", "backend": "soon", "frontend": "soon", "blurb": "Email, import/export, permissions, custom fields, rules, mobile"},
     {"id": 8, "name": "Hardening", "adrs": "all", "backend": "soon", "frontend": "soon", "blurb": "Full test run, demo polish"},

@@ -118,3 +118,16 @@ def test_documents_exist_on_disk_with_matching_hash(seeded):
 def test_last_contact_is_derived(seeded):
     assert n(seeded, "select count(*) from contacts where last_contact_at is not null") >= 100
     assert n(seeded, "select count(*) from properties where last_contact_at is not null") >= 80
+
+
+def test_investor_and_fund_volumes(seeded):
+    assert n(seeded, "select count(*) from investor_profiles") >= 50
+    assert n(seeded, "select count(*) from funds") >= 4
+    assert n(seeded, "select count(*) from commitments") >= 60
+
+
+def test_fund_rules_hold_in_seed(seeded):
+    assert n(seeded, "select count(*) from (select f.id from funds f join commitments c on c.fund_id=f.id where c.status in ('committed','funded') group by f.id having sum(c.amount) > f.target_raise)") == 0
+    assert n(seeded, "select count(*) from commitments c join investor_profiles p on p.id=c.investor_id where c.status in ('committed','funded') and p.accreditation_status != 'accredited'") == 0
+    assert n(seeded, "select count(*) from commitments c join funds f on f.id=c.fund_id where c.status != 'interested' and c.amount < f.minimum_investment") == 0
+    assert n(seeded, "select count(*) from commitments where status='funded' and funded_on is null") == 0

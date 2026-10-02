@@ -13,6 +13,7 @@ STAGE_SEEDERS = [
     "pipeline_seed",
     "deals_seed",
     "work_seed",
+    "investors_seed",
 ]
 
 

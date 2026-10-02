@@ -68,6 +68,8 @@ def merge(db: Session, entity: str, survivor_id: int, absorbed_id: int, choices:
                 continue
             if model is Company and row.id == survivor_id:
                 continue
+            if getattr(model, "__tablename__", "") == "investor_profiles" and db.scalar(select(model).where(getattr(model, col) == survivor_id)):
+                continue  # the survivor already has a profile (one profile per contact or company)
             setattr(row, col, survivor_id)
             if getattr(row, "is_primary", None) and model in (ContactEmail, ContactPhone):
                 row.is_primary = False
