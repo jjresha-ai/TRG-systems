@@ -16,6 +16,7 @@ import { compactMoney, cn, fmtDate, money } from '@/lib/utils'
 import { StatusBadge, type ListingRow } from '@/pages/Listings'
 import type { ContactRow } from '@/pages/Contacts'
 import { ActivityPanel } from '@/components/ActivityPanel'
+import { MatchPanel } from '@/components/MatchPanel'
 
 const STAGES = ['inquiry', 'ca_sent', 'ca_signed', 'om_sent', 'tour', 'offer', 'declined']
 const STAGE_LABEL: Record<string, string> = { inquiry: 'Inquiry', ca_sent: 'CA sent', ca_signed: 'CA signed', om_sent: 'OM sent', tour: 'Tour', offer: 'Offer', declined: 'Declined' }
@@ -77,6 +78,7 @@ export default function ListingDetail() {
                     <TD>{i.stage !== 'declined' && <Select aria-label={`Move ${i.contact}`} value="" onChange={(e) => e.target.value && advance(i, e.target.value)} className="h-8 text-xs"><option value="">Advance…</option>{STAGES.filter((s) => STAGES.indexOf(s) > STAGES.indexOf(i.stage) || s === 'declined').map((s) => <option key={s} value={s}>{STAGE_LABEL[s]}</option>)}</Select>}</TD></TR>))}
                 </TBody></Table>)}
           </CardContent></Card>
+          {['active', 'prospect', 'under_contract'].includes(l.status) && <MatchPanel listingId={l.id} />}
           <ActivityPanel recordType="listing" recordId={l.id} />
         </div>
         <div className="space-y-4">
