@@ -54,8 +54,12 @@ def make_deal(db, pipe, target_key, name, created, owner, price, bps, prop=None,
         deal.status, deal.lost_reason = "lost", lost_reason or pick(["Owner decided to hold", "Pricing gap", "Listed with another broker", "Buyer financing failed", "1031 timing", "Seller withdrew"])
     else:
         path = [s for s in opens if s.position <= tgt.position]
-        stay = timedelta(days=rnd(2, 70))
-        last = max(NOW - stay, created + timedelta(hours=1))
+        stay = timedelta(days=rnd(1, int((tgt.rotting_days or 30) * 1.5)))
+        last = NOW - stay
+        if len(path) == 1 or last <= created + timedelta(hours=2):
+            created = last - timedelta(days=rnd(0, 6)) if len(path) == 1 else created
+            deal.created_at = deal.updated_at = created
+            last = max(last, created + timedelta(hours=1))
         times = [created] + sorted(created + (last - created) * random.random() for _ in path[2:]) + ([last] if len(path) > 1 else [])
         times = times[: len(path)]
         _history(db, deal, pipe, path, times, owner.id)

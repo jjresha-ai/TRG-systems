@@ -86,3 +86,35 @@ def test_history_last_row_matches_current_stage(seeded):
 
 def test_snapshots_cover_a_year(seeded):
     assert n(seeded, "select count(distinct taken_on) from pipeline_snapshots") >= 50
+
+
+def test_work_volumes(seeded):
+    assert n(seeded, "select count(*) from activities") >= 200
+    assert n(seeded, "select count(*) from notes where deleted_at is null") >= 100
+    assert n(seeded, "select count(*) from documents") >= 100
+    assert n(seeded, "select count(distinct type) from activities") >= 4
+
+
+def test_activity_integrity(seeded):
+    assert n(seeded, "select count(*) from activities a where not exists (select 1 from activity_associations x where x.activity_id=a.id)") == 0
+    assert n(seeded, "select count(*) from activities where status='completed' and completed_at is null") == 0
+    assert n(seeded, "select count(*) from activities where status='planned' and due_at is null") == 0
+    assert n(seeded, "select count(*) from activities where status='planned' and due_at < datetime('now','start of day')") >= 5  # overdue tasks exist for the demo
+    assert n(seeded, "select count(*) from activities where status='planned' and date(due_at)=date('now')") >= 3
+
+
+def test_do_not_contact_respected_in_seed(seeded):
+    assert n(seeded, """select count(*) from activities a join activity_associations x on x.activity_id=a.id and x.record_type='contact'
+                        join contacts c on c.id=x.record_id where c.do_not_contact=1 and a.type in ('call','email','text')""") == 0
+
+
+def test_documents_exist_on_disk_with_matching_hash(seeded):
+    import hashlib
+    for path, digest, size in seeded.execute("select storage_path, content_hash, size from documents limit 40"):
+        data = open(path, "rb").read()
+        assert len(data) == size and hashlib.sha256(data).hexdigest() == digest
+
+
+def test_last_contact_is_derived(seeded):
+    assert n(seeded, "select count(*) from contacts where last_contact_at is not null") >= 100
+    assert n(seeded, "select count(*) from properties where last_contact_at is not null") >= 80
