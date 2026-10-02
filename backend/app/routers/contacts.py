@@ -10,6 +10,7 @@ from ..models.core import Contact, ContactCompanyRole, ContactEmail, ContactPhon
 from ..models.core_sys import User
 from ..security import require
 from ..services import entities as svc
+from ..services.visibility import Visibility, assert_can_set_confidential, sql_clause
 from ..services.common import paginate, user_names
 
 router = APIRouter(prefix="/api/contacts", tags=["contacts"])
@@ -53,6 +54,7 @@ class ContactIn(BaseModel):
     emails: list[EmailIn] = []
     phones: list[PhoneIn] = []
     company_links: list[CompanyLinkIn] = []
+    custom: dict | None = None
 
 
 class ContactPatch(BaseModel):
@@ -73,14 +75,18 @@ class ContactPatch(BaseModel):
     emails: list[EmailIn] | None = None
     phones: list[PhoneIn] | None = None
     custom: dict | None = None
+    confidential: bool | None = None
 
 
 @router.get("")
 def list_contacts(q: str | None = None, type: str | None = None, status: str | None = None, lifecycle: str | None = None,
                   owner_id: int | None = None, tag: str | None = None, dnc: bool | None = None, stale_days: int | None = None,
                   sort: str = "name", order: str = "asc", page: int = Query(1, ge=1), limit: int = Query(50, ge=1, le=200),
-                  db: Session = Depends(get_db), _: User = Depends(require("view"))):
+                  db: Session = Depends(get_db), user: User = Depends(require("view"))):
     stmt = select(Contact).where(Contact.deleted_at.is_(None))
+    clause = sql_clause(db, user, Contact)
+    if clause is not None:
+        stmt = stmt.where(clause)
     if q:
         like = f"%{q.strip()}%"
         stmt = stmt.where(or_(Contact.full_name.ilike(like), Contact.title.ilike(like),
@@ -110,40 +116,46 @@ def list_contacts(q: str | None = None, type: str | None = None, status: str | N
 
 @router.post("", status_code=201)
 def create_contact(body: ContactIn, db: Session = Depends(get_db), user: User = Depends(require("create"))):
-    c = svc.create_contact(db, body.model_dump(), user.id)
+    d = body.model_dump()
+    d["custom"] = d.get("custom") or {}
+    c = svc.create_contact(db, d, user.id)
     db.commit()
-    return svc.contact_detail(db, c, user_names(db))
+    return svc.contact_detail(db, c, user_names(db), user)
 
 
-def _get(db, cid) -> Contact:
+def _get(db, cid, user=None) -> Contact:
     c = db.get(Contact, cid)
-    if not c or c.deleted_at:
+    if not c or c.deleted_at or (user is not None and not Visibility(db, user).can_see(c)):
         raise HTTPException(404, "Contact not found")
     return c
 
 
 @router.get("/{cid}")
-def get_contact(cid: int, db: Session = Depends(get_db), _: User = Depends(require("view"))):
-    return svc.contact_detail(db, _get(db, cid), user_names(db))
+def get_contact(cid: int, db: Session = Depends(get_db), user: User = Depends(require("view"))):
+    return svc.contact_detail(db, _get(db, cid, user), user_names(db), user)
 
 
 @router.patch("/{cid}")
-def patch_contact(cid: int, body: ContactPatch, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
-    c = svc.update_contact(db, _get(db, cid), body.model_dump(exclude_unset=True))
+def patch_contact(cid: int, body: ContactPatch, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
+    obj = _get(db, cid, user)
+    fields = body.model_dump(exclude_unset=True)
+    if "confidential" in fields:
+        assert_can_set_confidential(obj, user)
+    c = svc.update_contact(db, obj, fields, user)
     db.commit()
-    return svc.contact_detail(db, c, user_names(db))
+    return svc.contact_detail(db, c, user_names(db), user)
 
 
 @router.delete("/{cid}", status_code=204)
-def delete_contact(cid: int, db: Session = Depends(get_db), _: User = Depends(require("delete"))):
-    _get(db, cid).deleted_at = utcnow()
+def delete_contact(cid: int, db: Session = Depends(get_db), user: User = Depends(require("delete"))):
+    _get(db, cid, user).deleted_at = utcnow()
     db.commit()
 
 
 @router.post("/{cid}/companies", status_code=201)
-def link_company(cid: int, body: CompanyLinkIn, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
+def link_company(cid: int, body: CompanyLinkIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
     from ..models.core import Company
-    _get(db, cid)
+    _get(db, cid, user)
     if not db.get(Company, body.company_id):
         raise HTTPException(422, "Unknown company")
     r = ContactCompanyRole(contact_id=cid, **body.model_dump())
@@ -153,7 +165,7 @@ def link_company(cid: int, body: CompanyLinkIn, db: Session = Depends(get_db), _
 
 
 @router.delete("/{cid}/companies/{role_id}", status_code=204)
-def unlink_company(cid: int, role_id: int, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
+def unlink_company(cid: int, role_id: int, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
     r = db.get(ContactCompanyRole, role_id)
     if not r or r.contact_id != cid:
         raise HTTPException(404, "Link not found")

@@ -10,7 +10,9 @@ from ..models.core_sys import User
 from ..models.pipeline import INTEREST_STAGES, LISTING_STATUSES, BuyerInterest, Listing
 from ..security import current_user, require
 from ..services import listings as svc
+from ..services import custom_fields as cfs
 from ..services.common import paginate, user_names
+from ..services.visibility import Visibility, sql_clause
 
 router = APIRouter(prefix="/api", tags=["listings"])
 
@@ -36,6 +38,7 @@ class ListingIn(BaseModel):
     owner_user_id: int | None = None
     brokers: list[BrokerIn] | None = None
     source: str | None = "manual"
+    custom: dict | None = None
 
 
 class ListingPatch(BaseModel):
@@ -48,6 +51,7 @@ class ListingPatch(BaseModel):
     expiration_date: date | None = None
     confidential: bool | None = None
     brokers: list[BrokerIn] | None = None
+    custom: dict | None = None
 
 
 class StatusIn(BaseModel):
@@ -59,9 +63,9 @@ class StatusIn(BaseModel):
     expiration_date: date | None = None
 
 
-def _get(db, lid) -> Listing:
+def _get(db, lid, user=None) -> Listing:
     l = db.get(Listing, lid)
-    if not l or l.deleted_at:
+    if not l or l.deleted_at or (user is not None and not Visibility(db, user).can_see(l)):
         raise HTTPException(404, "Listing not found")
     return l
 
@@ -72,6 +76,9 @@ def list_listings(property_id: int | None = None, status: str | None = None, typ
                   db: Session = Depends(get_db), user: User = Depends(require("view"))):
     from ..models.core import Property
     stmt = select(Listing).where(Listing.deleted_at.is_(None))
+    clause = sql_clause(db, user, Listing)
+    if clause is not None:
+        stmt = stmt.where(clause)
     if property_id:
         stmt = stmt.where(Listing.property_id == property_id)
     if status:
@@ -92,7 +99,7 @@ def list_listings(property_id: int | None = None, status: str | None = None, typ
 
 
 @router.get("/listings/summary")
-def summary(db: Session = Depends(get_db), _: User = Depends(require("view"))):
+def summary(db: Session = Depends(get_db), user: User = Depends(require("view"))):
     by = {s: {"count": 0, "value": 0} for s in LISTING_STATUSES}
     for s, n, v in db.execute(select(Listing.status, func.count(), func.coalesce(func.sum(Listing.list_price), 0)).where(Listing.deleted_at.is_(None)).group_by(Listing.status)):
         by[s] = {"count": n, "value": int(v)}
@@ -109,23 +116,27 @@ def create_listing(body: ListingIn, db: Session = Depends(get_db), user: User = 
         raise HTTPException(422, f"status must be one of {LISTING_STATUSES}")
     data = body.model_dump()
     data["brokers"] = [b for b in data["brokers"]] if data.get("brokers") else None
+    custom = data.pop("custom", None) or {}
     l = svc.create_listing(db, data, user.id)
+    l.custom = cfs.validate_custom(db, "listing", {}, custom, l, user, creating=True)
     db.commit()
     return svc.listing_out(db, l, user, user_names(db))
 
 
 @router.get("/listings/{lid}")
 def get_listing(lid: int, db: Session = Depends(get_db), user: User = Depends(require("view"))):
-    return svc.listing_out(db, _get(db, lid), user, user_names(db))
+    return svc.listing_out(db, _get(db, lid, user), user, user_names(db))
 
 
 @router.patch("/listings/{lid}")
 def patch_listing(lid: int, body: ListingPatch, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
-    l = _get(db, lid)
+    l = _get(db, lid, user)
     if l.status == "closed":
         raise HTTPException(409, "Closed listings cannot be edited")
     d = body.model_dump(exclude_unset=True)
     brokers = d.pop("brokers", None)
+    if "custom" in d:
+        l.custom = cfs.validate_custom(db, "listing", l.custom, d.pop("custom"), l, user)
     if ("commission_rate_bps" in d or "commission_terms" in d or brokers is not None) and user.role not in ("admin", "manager", "broker"):
         raise HTTPException(403, "Your role may not change commission or split fields")
     for k, v in d.items():
@@ -142,16 +153,16 @@ def patch_listing(lid: int, body: ListingPatch, db: Session = Depends(get_db), u
 def set_status(lid: int, body: StatusIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
     if body.status not in LISTING_STATUSES:
         raise HTTPException(422, f"status must be one of {LISTING_STATUSES}")
-    l = _get(db, lid)
+    l = _get(db, lid, user)
     svc.transition(db, l, body.status, body.model_dump(exclude_none=True), user.id)
     db.commit()
     return svc.listing_out(db, l, user, user_names(db))
 
 
 @router.delete("/listings/{lid}", status_code=204)
-def delete_listing(lid: int, db: Session = Depends(get_db), _: User = Depends(require("delete"))):
+def delete_listing(lid: int, db: Session = Depends(get_db), user: User = Depends(require("delete"))):
     from ..db import utcnow
-    _get(db, lid).deleted_at = utcnow()
+    _get(db, lid, user).deleted_at = utcnow()
     db.commit()
 
 
@@ -177,7 +188,7 @@ class InterestIn(BaseModel):
 
 @router.get("/listings/{lid}/interest")
 def interest(lid: int, db: Session = Depends(get_db), user: User = Depends(require("view"))):
-    l = _get(db, lid)
+    l = _get(db, lid, user)
     names = user_names(db)
     items = db.scalars(select(BuyerInterest).where(BuyerInterest.listing_id == lid)).all()
     funnel = {s: 0 for s in INTEREST_STAGES}
@@ -188,7 +199,7 @@ def interest(lid: int, db: Session = Depends(get_db), user: User = Depends(requi
 
 @router.post("/listings/{lid}/interest", status_code=201)
 def add_interest(lid: int, body: InterestIn, db: Session = Depends(get_db), user: User = Depends(require("create"))):
-    l = _get(db, lid)
+    l = _get(db, lid, user)
     data = body.model_dump()
     data["contact"] = body.contact.model_dump() if body.contact else None
     i = svc.record_interest(db, l, data, user.id)
@@ -201,7 +212,7 @@ def interest_event(iid: int, body: InterestIn, db: Session = Depends(get_db), us
     i = db.get(BuyerInterest, iid)
     if not i:
         raise HTTPException(404, "Not found")
-    l = _get(db, i.listing_id)
+    l = _get(db, i.listing_id, user)
     from ..models.core import Contact
     if body.stage in svc.OUTREACH_STAGES and db.get(Contact, i.contact_id).do_not_contact:
         raise HTTPException(409, "Contact is marked do-not-contact; outreach is blocked")

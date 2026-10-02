@@ -9,6 +9,7 @@ from ..models.core import (COMPANY_KINDS, CONTACT_TYPES, HOLD_INTENTS, LIFECYCLE
                            ContactCompanyRole, ContactEmail, ContactPhone, DuplicateCandidate, Property, PropertyOwnership)
 from . import dedupe
 from .common import years_between
+from . import custom_fields as cfs
 from .normalize import norm_address, norm_apn, norm_company_name, norm_domain, norm_email, norm_phone
 from .search import current_owners, holdings_of_contact
 
@@ -58,6 +59,8 @@ def create_contact(db: Session, data: dict, user_id: int) -> Contact:
     data["owner_user_id"] = data.get("owner_user_id") or user_id
     c = Contact(**data, full_name=f"{data['first_name']} {data['last_name']}".strip())
     set_contact_channels(c, emails, phones)
+    if "custom" in data:
+        c.custom = cfs.validate_custom(db, "contact", {}, data["custom"], c, None, creating=True)
     db.add(c)
     db.flush()
     for l in company_links:
@@ -68,10 +71,12 @@ def create_contact(db: Session, data: dict, user_id: int) -> Contact:
     return c
 
 
-def update_contact(db: Session, c: Contact, data: dict) -> Contact:
+def update_contact(db: Session, c: Contact, data: dict, user=None) -> Contact:
     _check(data.get("lifecycle_stage"), LIFECYCLE, "lifecycle_stage")
     for t in data.get("contact_types") or []:
         _check(t, CONTACT_TYPES, "contact_types")
+    if "custom" in data:
+        data["custom"] = cfs.validate_custom(db, "contact", c.custom, data["custom"], c, user)
     emails, phones = data.pop("emails", None), data.pop("phones", None)
     if emails is not None or phones is not None:
         definite, _ = dedupe.contact_matches(db, [e["email"] for e in emails or []], [p["phone"] for p in phones or []], "", "", exclude_id=c.id)
@@ -98,12 +103,12 @@ def contact_summary(db: Session, c: Contact, names: dict, with_holdings=True) ->
             "holdings_count": len(holdings_of_contact(db, c.id)) if with_holdings else None}
 
 
-def contact_detail(db: Session, c: Contact, names: dict) -> dict:
+def contact_detail(db: Session, c: Contact, names: dict, user=None) -> dict:
     d = contact_summary(db, c, names)
     roles = db.scalars(select(ContactCompanyRole).where(ContactCompanyRole.contact_id == c.id)).all()
     pend = db.scalars(select(DuplicateCandidate).where(DuplicateCandidate.entity == "contact", DuplicateCandidate.status == "pending",
                                                        (DuplicateCandidate.a_id == c.id) | (DuplicateCandidate.b_id == c.id))).all()
-    d.update(address=c.address, state=c.state, zip=c.zip, source=c.source, created_at=c.created_at, custom=c.custom,
+    d.update(address=c.address, state=c.state, zip=c.zip, source=c.source, created_at=c.created_at, custom=cfs.visible_custom(db, "contact", c.custom, user) if user else c.custom,
              do_not_contact_reason=c.do_not_contact_reason, confidential=c.confidential,
              emails=[{"id": e.id, "email": e.email, "label": e.label, "is_primary": e.is_primary} for e in c.emails],
              phones=[{"id": p.id, "phone": p.phone, "label": p.label, "is_primary": p.is_primary} for p in c.phones],
@@ -123,14 +128,18 @@ def create_company(db: Session, data: dict, user_id: int) -> Company:
     data["owner_user_id"] = data.get("owner_user_id") or user_id
     co = Company(**data, normalized_name=norm_company_name(data["name"]), domain=norm_domain(data.get("website")),
                  normalized_address=norm_address(data.get("address"), data.get("city")) if data.get("address") else None)
+    if "custom" in data:
+        co.custom = cfs.validate_custom(db, "company", {}, data["custom"], co, None, creating=True)
     db.add(co)
     db.flush()
     dedupe.queue_possible(db, "company", co.id, possible)
     return co
 
 
-def update_company(db: Session, co: Company, data: dict) -> Company:
+def update_company(db: Session, co: Company, data: dict, user=None) -> Company:
     _check(data.get("kind"), COMPANY_KINDS, "kind")
+    if "custom" in data:
+        data["custom"] = cfs.validate_custom(db, "company", co.custom, data["custom"], co, user)
     for k, v in data.items():
         setattr(co, k, v)
     co.normalized_name = norm_company_name(co.name)
@@ -148,13 +157,13 @@ def company_summary(db: Session, co: Company, names: dict) -> dict:
             "portfolio_value": sum(o.property.estimated_value or 0 for o in owned)}
 
 
-def company_detail(db: Session, co: Company, names: dict) -> dict:
+def company_detail(db: Session, co: Company, names: dict, user=None) -> dict:
     d = company_summary(db, co, names)
     roles = db.scalars(select(ContactCompanyRole).where(ContactCompanyRole.company_id == co.id)).all()
     own = db.scalars(select(PropertyOwnership).where(PropertyOwnership.company_id == co.id).order_by(PropertyOwnership.acquired_date.desc())).all()
     parent = db.get(Company, co.parent_company_id) if co.parent_company_id else None
     kids = db.scalars(select(Company).where(Company.parent_company_id == co.id, Company.deleted_at.is_(None))).all()
-    d.update(address=co.address, zip=co.zip, source=co.source, custom=co.custom, created_at=co.created_at,
+    d.update(address=co.address, zip=co.zip, source=co.source, custom=cfs.visible_custom(db, "company", co.custom, user) if user else co.custom, created_at=co.created_at,
              parent={"id": parent.id, "name": parent.name} if parent else None,
              children=[{"id": k.id, "name": k.name} for k in kids],
              principals=[{"role_id": r.id, "contact_id": r.contact_id, "name": r.contact.full_name, "role": r.role, "is_primary": r.is_primary,
@@ -174,14 +183,18 @@ def create_property(db: Session, data: dict, user_id: int) -> Property:
         _dup_error("property", definite)
     data["owner_user_id"] = data.get("owner_user_id") or user_id
     p = Property(**data, normalized_address=norm_address(data["address"], data.get("city")), apn_norm=norm_apn(data.get("apn")))
+    if "custom" in data:
+        p.custom = cfs.validate_custom(db, "property", {}, data["custom"], p, None, creating=True)
     db.add(p)
     db.flush()
     dedupe.queue_possible(db, "property", p.id, possible)
     return p
 
 
-def update_property(db: Session, p: Property, data: dict) -> Property:
+def update_property(db: Session, p: Property, data: dict, user=None) -> Property:
     _check(data.get("property_type"), PROPERTY_TYPES, "property_type")
+    if "custom" in data:
+        data["custom"] = cfs.validate_custom(db, "property", p.custom, data["custom"], p, user)
     _check(data.get("hold_intent"), HOLD_INTENTS, "hold_intent")
     for k, v in data.items():
         setattr(p, k, v)
@@ -208,11 +221,11 @@ def property_summary(db: Session, p: Property, names: dict) -> dict:
             "principal": owners[0]["principals"][0]["name"] if owners and owners[0]["principals"] else None}
 
 
-def property_detail(db: Session, p: Property, names: dict) -> dict:
+def property_detail(db: Session, p: Property, names: dict, user=None) -> dict:
     d = property_summary(db, p, names)
     hist = db.scalars(select(PropertyOwnership).where(PropertyOwnership.property_id == p.id).order_by(PropertyOwnership.acquired_date.desc())).all()
     d.update(zoning=p.zoning, loan_original_amount=p.loan_original_amount, loan_rate_type=p.loan_rate_type,
-             pricing_expectation=p.pricing_expectation, source=p.source, custom=p.custom, created_at=p.created_at,
+             pricing_expectation=p.pricing_expectation, source=p.source, custom=cfs.visible_custom(db, "property", p.custom, user) if user else p.custom, created_at=p.created_at,
              owners=current_owners(db, p.id),
              ownership_history=[{"id": o.id, "company_id": o.company_id, "company": o.company.name if o.company else None,
                                  "contact_id": o.contact_id, "contact": o.contact.full_name if o.contact else None,

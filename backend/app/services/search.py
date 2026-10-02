@@ -58,13 +58,15 @@ def holdings_of_contact(db: Session, contact_id: int):
     return list(props.values())
 
 
-def search(db: Session, q: str, limit: int = 20, types: set[str] | None = None, extra_providers=None):
+def search(db: Session, q: str, limit: int = 20, types: set[str] | None = None, extra_providers=None, user=None):
     q = q.strip()
     if len(q) < 2:
         return []
     ql, toks = q.lower(), _tokens(q)
     ne, npn, napn, naddr = norm_email(q), norm_phone(q) if re.search(r"\d{7,}", re.sub(r"\D", "", q)) else None, norm_apn(q), norm_address(q)
     results = []
+    from .visibility import Visibility
+    vis = Visibility(db, user) if user is not None else None
 
     def want(t):
         return not types or t in types
@@ -79,6 +81,8 @@ def search(db: Session, q: str, limit: int = 20, types: set[str] | None = None, 
             ids |= set(db.scalars(select(ContactPhone.contact_id).where(ContactPhone.normalized == npn)))
         stmt = select(Contact).where(Contact.deleted_at.is_(None), or_(cond, Contact.id.in_(ids)) if ids else cond)
         for c in db.scalars(stmt.limit(300)):
+            if vis and not vis.can_see(c):
+                continue
             s = max(_score(c.full_name, ql, toks), 95 if c.id in ids else 0, _score(c.title or "", ql, toks) * 0.3)
             if s > 0:
                 co = db.scalars(select(ContactCompanyRole).where(ContactCompanyRole.contact_id == c.id)).first()
@@ -88,6 +92,8 @@ def search(db: Session, q: str, limit: int = 20, types: set[str] | None = None, 
     if want("company"):
         like = [Company.name.ilike(f"%{t[:3]}%") for t in toks]
         for co in db.scalars(select(Company).where(Company.deleted_at.is_(None), or_(*like)).limit(300)):
+            if vis and not vis.can_see(co):
+                continue
             s = _score(co.name, ql, toks)
             if s > 0:
                 results.append({"type": "company", "id": co.id, "title": co.name, "subtitle": f"{co.kind.replace('_', ' ').title()} · {co.city or ''}".strip(" ·"),
@@ -97,6 +103,8 @@ def search(db: Session, q: str, limit: int = 20, types: set[str] | None = None, 
         if napn:
             like.append(Property.apn_norm == napn)
         for p in db.scalars(select(Property).where(Property.deleted_at.is_(None), or_(*like)).limit(300)):
+            if vis and not vis.can_see(p):
+                continue
             s = max(_score(p.address, ql, toks), _score(p.name or "", ql, toks), 98 if napn and p.apn_norm == napn else 0)
             s = max(s, _score(f"{p.address} {p.city}", ql, toks))
             if s > 0:

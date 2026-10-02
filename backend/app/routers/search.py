@@ -17,8 +17,8 @@ router = APIRouter(prefix="/api", tags=["search"])
 
 
 @router.get("/search")
-def global_search(q: str, types: str | None = None, limit: int = Query(20, le=50), db: Session = Depends(get_db), _: User = Depends(require("view"))):
-    return {"query": q, "results": search(db, q, limit, set(types.split(",")) if types else None)}
+def global_search(q: str, types: str | None = None, limit: int = Query(20, le=50), db: Session = Depends(get_db), user: User = Depends(require("view"))):
+    return {"query": q, "results": search(db, q, limit, set(types.split(",")) if types else None, user=user)}
 
 
 class MergeIn(BaseModel):

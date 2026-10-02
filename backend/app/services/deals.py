@@ -235,7 +235,7 @@ def deal_out(db: Session, d: Deal, user: User, names: dict, detail: bool = False
            "expected_close_date": d.expected_close_date, "actual_close_date": d.actual_close_date, "listing_expiration_date": d.listing_expiration_date,
            "dd_expiry_date": d.dd_expiry_date, "loan_contingency_date": d.loan_contingency_date, "lost_reason": d.lost_reason,
            "days_in_stage": days_in_stage(d), "rotting": is_rotting(d), "owner_user_id": d.owner_user_id, "owner_name": names.get(d.owner_user_id),
-           "source": d.source, "created_at": d.created_at, "tags": d.tags,
+           "source": d.source, "created_at": d.created_at, "tags": d.tags, "custom": __import__("app.services.custom_fields", fromlist=["x"]).visible_custom(db, "deal", d.custom, user),
            "parties": [{"id": x.id, "role": x.role, "contact_id": x.contact_id, "company_id": x.company_id,
                         "contact": db.get(Contact, x.contact_id).full_name if x.contact_id else None,
                         "company": db.get(Company, x.company_id).name if x.company_id else None} for x in d.parties]}

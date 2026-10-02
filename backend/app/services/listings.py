@@ -121,7 +121,8 @@ def listing_out(db: Session, l: Listing, user: User, names: dict) -> dict:
            "seller_contact": sc.full_name if sc else None, "seller_contact_id": l.seller_contact_id,
            "confidential": l.confidential, "owner_user_id": l.owner_user_id, "owner_name": names.get(l.owner_user_id),
            "brokers": [{"user_id": b.user_id, "name": names.get(b.user_id), "role": b.role, "split_pct": b.split_pct} for b in l.brokers],
-           "interest_total": len(interests), "funnel": funnel, "deal_id": l.deal_id, "created_at": l.created_at}
+           "interest_total": len(interests), "funnel": funnel, "deal_id": l.deal_id, "created_at": l.created_at,
+           "custom": __import__("app.services.custom_fields", fromlist=["x"]).visible_custom(db, "listing", l.custom, user)}
     if can_see_commission(user):
         out["commission_rate_bps"] = l.commission_rate_bps
         out["commission_terms"] = l.commission_terms

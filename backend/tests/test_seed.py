@@ -140,3 +140,11 @@ def test_goals_seeded_and_reports_have_substance(seeded):
 
 def test_year_of_closed_production_exists(seeded):
     assert n(seeded, "select count(*) from deals d join stages s on s.id=d.stage_id where s.is_won=1 and d.actual_close_date >= date('now','-365 days')") >= 15
+
+
+def test_platform_seed(seeded):
+    assert n(seeded, "select count(*) from field_definitions") >= 6
+    assert n(seeded, "select count(*) from saved_views") >= 5
+    assert n(seeded, "select count(*) from lists") >= 4
+    assert n(seeded, "select count(*) from properties where custom like '%seller_motivation%'") >= 50
+    assert n(seeded, "select count(*) from contacts where tags like '%call-campaign-q4%'") >= 5

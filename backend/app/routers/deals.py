@@ -11,7 +11,9 @@ from ..models.core_sys import User
 from ..models.deals import Deal, DealParty, Pipeline, Stage
 from ..security import can_see_commission, require
 from ..services import deals as svc
+from ..services import custom_fields as cfs
 from ..services.common import paginate, user_names
+from ..services.visibility import Visibility, sql_clause
 
 router = APIRouter(prefix="/api", tags=["deals"])
 
@@ -39,6 +41,7 @@ class DealIn(BaseModel):
     source: str | None = "manual"
     parties: list[PartyIn] = []
     tags: list[str] = []
+    custom: dict | None = None
 
 
 class DealPatch(BaseModel):
@@ -53,6 +56,7 @@ class DealPatch(BaseModel):
     loan_contingency_date: date | None = None
     owner_user_id: int | None = None
     tags: list[str] | None = None
+    custom: dict | None = None
 
 
 class StageIn(BaseModel):
@@ -82,9 +86,9 @@ class SplitsIn(BaseModel):
 COMMISSION_FIELDS = {"gross_commission", "commission_rate_bps"}
 
 
-def _get(db, did) -> Deal:
+def _get(db, did, user=None) -> Deal:
     d = db.get(Deal, did)
-    if not d or d.deleted_at:
+    if not d or d.deleted_at or (user is not None and not Visibility(db, user).can_see(d)):
         raise HTTPException(404, "Deal not found")
     return d
 
@@ -95,7 +99,7 @@ def _guard_commission(user: User, fields: set[str]):
 
 
 @router.get("/pipelines")
-def pipelines(db: Session = Depends(get_db), _: User = Depends(require("view"))):
+def pipelines(db: Session = Depends(get_db), user: User = Depends(require("view"))):
     svc.ensure_default_pipelines(db)
     db.commit()
     return [{"id": p.id, "key": p.key, "name": p.name, "deal_type": p.deal_type,
@@ -109,7 +113,7 @@ class StagePatch(BaseModel):
 
 
 @router.patch("/stages/{sid}")
-def patch_stage(sid: int, body: StagePatch, db: Session = Depends(get_db), _: User = Depends(require("admin"))):
+def patch_stage(sid: int, body: StagePatch, db: Session = Depends(get_db), user: User = Depends(require("admin"))):
     s = db.get(Stage, sid)
     if not s:
         raise HTTPException(404, "Stage not found")
@@ -126,6 +130,9 @@ def list_deals(pipeline: str | None = None, stage_id: int | None = None, status:
                q: str | None = None, closing_before: date | None = None, rotting: bool | None = None, property_id: int | None = None, sort: str = "recent",
                page: int = Query(1, ge=1), limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db), user: User = Depends(require("view"))):
     stmt = select(Deal).where(Deal.deleted_at.is_(None))
+    clause = sql_clause(db, user, Deal)
+    if clause is not None:
+        stmt = stmt.where(clause)
     if pipeline:
         stmt = stmt.where(Deal.pipeline_id == svc.get_pipeline(db, pipeline).id)
     if stage_id:
@@ -160,6 +167,9 @@ def board(pipeline: str = "seller", owner_id: int | None = None, db: Session = D
         if s.is_lost:
             continue
         stmt = select(Deal).where(Deal.stage_id == s.id, Deal.deleted_at.is_(None))
+        clause = sql_clause(db, user, Deal)
+        if clause is not None:
+            stmt = stmt.where(clause)
         if owner_id:
             stmt = stmt.where(Deal.owner_user_id == owner_id)
         if s.is_won:
@@ -194,21 +204,25 @@ def create_deal(body: DealIn, db: Session = Depends(get_db), user: User = Depend
     d = body.model_dump(exclude_none=True)
     _guard_commission(user, set(d))
     d["parties"] = [p for p in d.get("parties", [])]
+    custom = d.pop("custom", None) or {}
     deal = svc.create_deal(db, d, user.id)
+    deal.custom = cfs.validate_custom(db, "deal", {}, custom, deal, user, creating=True)
     db.commit()
     return svc.deal_out(db, deal, user, user_names(db), detail=True)
 
 
 @router.get("/deals/{did}")
 def get_deal(did: int, db: Session = Depends(get_db), user: User = Depends(require("view"))):
-    return svc.deal_out(db, _get(db, did), user, user_names(db), detail=True)
+    return svc.deal_out(db, _get(db, did, user), user, user_names(db), detail=True)
 
 
 @router.patch("/deals/{did}")
 def patch_deal(did: int, body: DealPatch, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
-    d = _get(db, did)
+    d = _get(db, did, user)
     fields = body.model_dump(exclude_unset=True)
     _guard_commission(user, set(fields))
+    if "custom" in fields:
+        d.custom = cfs.validate_custom(db, "deal", d.custom, fields.pop("custom"), d, user)
     if d.status == "won" and set(fields) - {"tags", "name"}:
         raise HTTPException(409, "Closed deals are locked")
     for k, v in fields.items():
@@ -222,7 +236,7 @@ def patch_deal(did: int, body: DealPatch, db: Session = Depends(get_db), user: U
 
 @router.post("/deals/{did}/stage")
 def move_stage(did: int, body: StageIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
-    d = _get(db, did)
+    d = _get(db, did, user)
     if not body.stage_id and not body.stage:
         raise HTTPException(422, "stage_id or stage is required")
     svc.change_stage(db, d, body.stage_id, body.stage, user.id, body.model_dump(exclude_none=True), note=body.note)
@@ -232,14 +246,14 @@ def move_stage(did: int, body: StageIn, db: Session = Depends(get_db), user: Use
 
 @router.post("/deals/{did}/parties", status_code=201)
 def add_party(did: int, body: PartyIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
-    d = _get(db, did)
+    d = _get(db, did, user)
     svc.add_party(db, d, body.model_dump())
     db.commit()
     return svc.deal_out(db, d, user, user_names(db), detail=True)
 
 
 @router.delete("/deals/{did}/parties/{pid}", status_code=204)
-def remove_party(did: int, pid: int, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
+def remove_party(did: int, pid: int, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
     p = db.get(DealParty, pid)
     if not p or p.deal_id != did:
         raise HTTPException(404, "Party not found")
@@ -251,13 +265,13 @@ def remove_party(did: int, pid: int, db: Session = Depends(get_db), _: User = De
 def put_splits(did: int, body: SplitsIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
     if not can_see_commission(user):
         raise HTTPException(403, "Your role may not change commission fields")
-    d = _get(db, did)
+    d = _get(db, did, user)
     svc.set_splits(db, d, [s.model_dump() for s in body.splits])
     db.commit()
     return svc.deal_out(db, d, user, user_names(db), detail=True)
 
 
 @router.delete("/deals/{did}", status_code=204)
-def delete_deal(did: int, db: Session = Depends(get_db), _: User = Depends(require("delete"))):
-    _get(db, did).deleted_at = utcnow()
+def delete_deal(did: int, db: Session = Depends(get_db), user: User = Depends(require("delete"))):
+    _get(db, did, user).deleted_at = utcnow()
     db.commit()

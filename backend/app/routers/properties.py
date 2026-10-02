@@ -10,6 +10,7 @@ from ..models.core import Property, PropertyOwnership
 from ..models.core_sys import User
 from ..security import require
 from ..services import entities as svc
+from ..services.visibility import Visibility, assert_can_set_confidential, sql_clause
 from ..services.common import add_months, paginate, user_names
 from ..services.normalize import norm_address
 
@@ -47,6 +48,7 @@ class PropertyBase(BaseModel):
     owner_user_id: int | None = None
     tags: list[str] | None = None
     custom: dict | None = None
+    confidential: bool | None = None
 
 
 class PropertyIn(PropertyBase):
@@ -69,9 +71,9 @@ class OwnershipIn(BaseModel):
     dispose_current: bool = True
 
 
-def _get(db, pid) -> Property:
+def _get(db, pid, user=None) -> Property:
     p = db.get(Property, pid)
-    if not p or p.deleted_at:
+    if not p or p.deleted_at or (user is not None and not Visibility(db, user).can_see(p)):
         raise HTTPException(404, "Property not found")
     return p
 
@@ -81,8 +83,11 @@ def list_properties(q: str | None = None, type: str | None = None, subtype: str 
                     hold_intent: str | None = None, min_sf: int | None = None, max_sf: int | None = None,
                     maturity_within_months: int | None = None, held_at_least_years: float | None = None, owner_id: int | None = None,
                     tag: str | None = None, sort: str = "address", order: str = "asc", page: int = Query(1, ge=1), limit: int = Query(50, ge=1, le=200),
-                    db: Session = Depends(get_db), _: User = Depends(require("view"))):
+                    db: Session = Depends(get_db), user: User = Depends(require("view"))):
     stmt = select(Property).where(Property.deleted_at.is_(None))
+    clause = sql_clause(db, user, Property)
+    if clause is not None:
+        stmt = stmt.where(clause)
     if q:
         like = f"%{q}%"
         stmt = stmt.where(or_(Property.address.ilike(like), Property.name.ilike(like), Property.city.ilike(like), Property.apn.ilike(like),
@@ -122,32 +127,38 @@ def list_properties(q: str | None = None, type: str | None = None, subtype: str 
 
 @router.post("", status_code=201)
 def create_property(body: PropertyIn, db: Session = Depends(get_db), user: User = Depends(require("create"))):
-    p = svc.create_property(db, body.model_dump(exclude_none=True), user.id)
+    d = body.model_dump(exclude_none=True)
+    d.setdefault("custom", {})
+    p = svc.create_property(db, d, user.id)
     db.commit()
-    return svc.property_detail(db, p, user_names(db))
+    return svc.property_detail(db, p, user_names(db), user)
 
 
 @router.get("/{pid}")
-def get_property(pid: int, db: Session = Depends(get_db), _: User = Depends(require("view"))):
-    return svc.property_detail(db, _get(db, pid), user_names(db))
+def get_property(pid: int, db: Session = Depends(get_db), user: User = Depends(require("view"))):
+    return svc.property_detail(db, _get(db, pid, user), user_names(db), user)
 
 
 @router.patch("/{pid}")
-def patch_property(pid: int, body: PropertyBase, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
-    p = svc.update_property(db, _get(db, pid), body.model_dump(exclude_unset=True))
+def patch_property(pid: int, body: PropertyBase, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
+    obj = _get(db, pid, user)
+    fields = body.model_dump(exclude_unset=True)
+    if "confidential" in fields:
+        assert_can_set_confidential(obj, user)
+    p = svc.update_property(db, obj, fields, user)
     db.commit()
-    return svc.property_detail(db, p, user_names(db))
+    return svc.property_detail(db, p, user_names(db), user)
 
 
 @router.delete("/{pid}", status_code=204)
-def delete_property(pid: int, db: Session = Depends(get_db), _: User = Depends(require("delete"))):
-    _get(db, pid).deleted_at = utcnow()
+def delete_property(pid: int, db: Session = Depends(get_db), user: User = Depends(require("delete"))):
+    _get(db, pid, user).deleted_at = utcnow()
     db.commit()
 
 
 @router.post("/{pid}/ownerships", status_code=201)
-def transfer_ownership(pid: int, body: OwnershipIn, db: Session = Depends(get_db), _: User = Depends(require("edit"))):
-    p = _get(db, pid)
+def transfer_ownership(pid: int, body: OwnershipIn, db: Session = Depends(get_db), user: User = Depends(require("edit"))):
+    p = _get(db, pid, user)
     svc.transfer_ownership(db, p, body.model_dump())
     db.commit()
-    return svc.property_detail(db, p, user_names(db))
+    return svc.property_detail(db, p, user_names(db), user)
