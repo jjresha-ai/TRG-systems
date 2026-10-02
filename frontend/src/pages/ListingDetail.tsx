@@ -17,6 +17,7 @@ import { StatusBadge, type ListingRow } from '@/pages/Listings'
 import type { ContactRow } from '@/pages/Contacts'
 import { ActivityPanel } from '@/components/ActivityPanel'
 import { MatchPanel } from '@/components/MatchPanel'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 
 const STAGES = ['inquiry', 'ca_sent', 'ca_signed', 'om_sent', 'tour', 'offer', 'declined']
 const STAGE_LABEL: Record<string, string> = { inquiry: 'Inquiry', ca_sent: 'CA sent', ca_signed: 'CA signed', om_sent: 'OM sent', tour: 'Tour', offer: 'Offer', declined: 'Declined' }
@@ -83,6 +84,7 @@ export default function ListingDetail() {
         </div>
         <div className="space-y-4">
           <Card><CardHeader><CardTitle>Broker team</CardTitle></CardHeader><CardContent><ul className="space-y-2 text-sm">{l.brokers.map((b) => (<li key={b.user_id} className="flex justify-between"><span>{b.name} <span className="text-xs capitalize text-muted-foreground">{b.role}</span></span><Badge variant="outline">{b.split_pct}%</Badge></li>))}</ul></CardContent></Card>
+          <CustomFieldsCard entity="listing" path={`/listings/${l.id}`} values={(l as unknown as { custom: Record<string, unknown> }).custom} />
           <Card><CardHeader><CardTitle>Listing agreement</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Signed</span><span>{fmtDate(l.agreement_date)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Expires</span><span>{fmtDate(l.expiration_date)}</span></div>

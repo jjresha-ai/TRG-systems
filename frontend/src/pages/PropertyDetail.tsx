@@ -7,6 +7,7 @@ import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table'
 import { EntityLink, ErrorBox, HoldBadge, Loading, MaturityBadge, Stat, ago } from '@/components/common'
 import { compactMoney, fmtDate, money, num } from '@/lib/utils'
 import { ActivityPanel } from '@/components/ActivityPanel'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 import { PropertyPipeline } from '@/components/PropertyPipeline'
 
 interface D {
@@ -14,6 +15,7 @@ interface D {
   market: string | null; submarket: string | null; building_sf: number | null; land_acres: number | null; year_built: number | null; zoning: string | null
   noi: number | null; cap_rate_bps: number | null; estimated_value: number | null; lender: string | null; loan_original_amount: number | null; loan_rate_type: string | null
   loan_maturity_date: string | null; hold_intent: string; pricing_expectation: number | null; hold_years: number | null; owner_name: string | null; last_contact_at: string | null; tags: string[]
+  custom: Record<string, unknown>
   owners: { company_id: number | null; company: string | null; contact_id: number | null; name?: string; pct: number; principals: { id: number; name: string; role: string }[] }[]
   ownership_history: { id: number; company_id: number | null; company: string | null; contact_id: number | null; contact: string | null; ownership_pct: number; acquired_date: string | null; disposed_date: string | null; acquisition_price: number | null }[]
 }
@@ -64,6 +66,7 @@ export default function PropertyDetail() {
             <Row k="Rate type" v={<span className="capitalize">{p.loan_rate_type ?? '—'}</span>} />
             <Row k="Maturity" v={<span className="flex items-center gap-2">{fmtDate(p.loan_maturity_date)} <MaturityBadge d={p.loan_maturity_date} /></span>} />
           </CardContent></Card>
+          <CustomFieldsCard entity="property" path={`/properties/${p.id}`} values={p.custom} />
           <Card><CardHeader><CardTitle>Physical</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">
             <Row k="Market" v={`${p.market} · ${p.submarket}`} /><Row k="Zoning" v={p.zoning ?? '—'} /><Row k="Year built" v={p.year_built ?? '—'} />
           </CardContent></Card>

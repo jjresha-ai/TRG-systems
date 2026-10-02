@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { ago, EntityLink, ErrorBox, Loading, Stat, TypeBadge } from '@/components/common'
 import { fmtDate } from '@/lib/utils'
 import { ActivityPanel } from '@/components/ActivityPanel'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 
 interface Detail {
   id: number; full_name: string; title: string | null; address: string | null; city: string | null; state: string | null; zip: string | null
@@ -15,6 +16,7 @@ interface Detail {
   emails: { id: number; email: string; label: string; is_primary: boolean }[]; phones: { id: number; phone: string; label: string; is_primary: boolean }[]
   companies: { role_id: number; company_id: number; company: string; kind: string; role: string; is_primary: boolean }[]
   holdings: { property_id: number; address: string; city: string; via: string }[]
+  custom: Record<string, unknown>
   possible_duplicates: { id: number; other_id: number; reason: string }[]
 }
 
@@ -62,6 +64,7 @@ export default function ContactDetail() {
             {c.phones.map((p) => <div key={p.id} className="flex items-center gap-2"><Phone className="h-4 w-4 text-accent" />{p.phone}<span className="text-xs text-muted-foreground">{p.label}</span></div>)}
             {c.address && <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-accent" />{c.address}, {c.city} {c.state} {c.zip}</div>}
           </CardContent></Card>
+          <CustomFieldsCard entity="contact" path={`/contacts/${c.id}`} values={c.custom} />
           <Card><CardHeader><CardTitle>Entities & roles</CardTitle></CardHeader><CardContent>
             {c.companies.length === 0 ? <p className="text-sm text-muted-foreground">No company links.</p> : (
               <ul className="space-y-2">{c.companies.map((r) => (

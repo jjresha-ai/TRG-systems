@@ -19,6 +19,7 @@ import Investors from '@/pages/Investors'
 import InvestorDetail from '@/pages/InvestorDetail'
 import Funds from '@/pages/Funds'
 import FundDetail from '@/pages/FundDetail'
+import Lists from '@/pages/Lists'
 import Listings from '@/pages/Listings'
 import ListingDetail from '@/pages/ListingDetail'
 
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/investors/:id" element={<InvestorDetail />} />
         <Route path="/funds" element={<Funds />} />
         <Route path="/funds/:id" element={<FundDetail />} />
+        <Route path="/lists" element={<Lists />} />
         <Route path="/listings" element={<Listings />} />
         <Route path="/listings/:id" element={<ListingDetail />} />
         <Route path="/duplicates" element={<Duplicates />} />

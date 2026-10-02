@@ -7,10 +7,12 @@ import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table'
 import { EntityLink, ErrorBox, Loading, Stat } from '@/components/common'
 import { compactMoney, fmtDate } from '@/lib/utils'
 import { ActivityPanel } from '@/components/ActivityPanel'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 
 interface D {
   id: number; name: string; kind: string; website: string | null; address: string | null; city: string | null; state: string | null; owner_name: string | null
   properties_count: number; portfolio_value: number; parent: { id: number; name: string } | null; children: { id: number; name: string }[]
+  custom: Record<string, unknown>
   principals: { role_id: number; contact_id: number; name: string; role: string; is_primary: boolean; title: string | null; end_date: string | null }[]
   holdings: { ownership_id: number; property_id: number; address: string; city: string; property_type: string; acquired_date: string | null; disposed_date: string | null; ownership_pct: number; estimated_value: number | null }[]
 }
@@ -46,6 +48,7 @@ export default function CompanyDetail() {
           <ActivityPanel recordType="company" recordId={c.id} />
         </div>
         <div className="space-y-4">
+          <CustomFieldsCard entity="company" path={`/companies/${c.id}`} values={c.custom} />
           <Card><CardHeader><CardTitle>People behind the entity</CardTitle></CardHeader><CardContent><ul className="space-y-3">
             {c.principals.map((p) => (<li key={p.role_id} className="text-sm"><EntityLink to={`/contacts/${p.contact_id}`}>{p.name}</EntityLink>
               <div className="text-xs capitalize text-muted-foreground">{p.role.replace('_', ' ')}{p.is_primary ? ' · decision-maker' : ''}{p.title ? ` · ${p.title}` : ''}</div></li>))}

@@ -14,6 +14,7 @@ import { EntityLink, ErrorBox, Loading, Stat } from '@/components/common'
 import { StageMoveDialog, needs, type DealLite, type StageLite } from '@/components/StageMove'
 import { compactMoney, cn, fmtDate, money } from '@/lib/utils'
 import { ActivityPanel } from '@/components/ActivityPanel'
+import { CustomFieldsCard } from '@/components/CustomFieldsCard'
 
 interface Detail extends DealLite {
   pipeline: { id: number; key: string; name: string }; status: string; probability: number; owner_name: string | null; property_id: number | null; listing_id: number | null
@@ -89,6 +90,7 @@ export default function DealDetail() {
               {p.contact_id ? <EntityLink to={`/contacts/${p.contact_id}`}>{p.contact}</EntityLink> : <EntityLink to={`/companies/${p.company_id}`}>{p.company}</EntityLink>}</li>))}
             {d.parties.length === 0 && <li className="text-muted-foreground">No parties yet.</li>}
           </ul></CardContent></Card>
+          <CustomFieldsCard entity="deal" path={`/deals/${d.id}`} values={(d as unknown as { custom: Record<string, unknown> }).custom} />
           <Card><CardHeader><CardTitle>Key dates</CardTitle></CardHeader><CardContent className="space-y-1.5 text-sm">
             {[['Listing expires', d.listing_expiration_date], ['Due diligence expires', d.dd_expiry_date], ['Loan contingency', d.loan_contingency_date], ['Closing', d.actual_close_date ?? d.expected_close_date]].map(([k, v]) => (
               <div key={k as string} className="flex justify-between"><span className="text-muted-foreground">{k}</span><span>{fmtDate(v as string)}</span></div>))}
